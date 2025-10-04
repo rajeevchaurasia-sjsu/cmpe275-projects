@@ -1,1 +1,0 @@
-/usr/bin/c++  -Wall -Wextra -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/air_quality_test.dir/main.cpp.o CMakeFiles/air_quality_test.dir/AirQualityDataManager.cpp.o CMakeFiles/air_quality_test.dir/utils/CSVParser.cpp.o CMakeFiles/air_quality_test.dir/utils/BenchmarkTimer.cpp.o -o air_quality_test
