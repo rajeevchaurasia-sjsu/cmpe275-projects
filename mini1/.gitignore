@@ -24,3 +24,7 @@ Makefile
 air_quality_test
 population_test
 benchmark_runner
+
+# IDE files
+.vscode/
+.idea/
