@@ -2,7 +2,7 @@
 #include "include/WorldBankCSVLoader.hpp"
 
 void PopulationDataManagerHash::loadFromCSV(const std::string& filename) {
-    // Use common CSV loader with callback to store data
+    
     WorldBankCSVLoader::loadFromCSV(filename, [this](const PopulationDTO& dto) {
         countriesHash[dto.getCountryCode()] = dto;
     });

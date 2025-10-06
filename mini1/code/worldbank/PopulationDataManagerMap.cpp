@@ -3,7 +3,6 @@
 
 void PopulationDataManagerMap::loadFromCSV(const std::string& filename) {
     
-    // Use common CSV loader with callback to store data
     WorldBankCSVLoader::loadFromCSV(filename, [this](const PopulationDTO& dto) {
         countriesMap[dto.getCountryCode()] = dto;
     });
