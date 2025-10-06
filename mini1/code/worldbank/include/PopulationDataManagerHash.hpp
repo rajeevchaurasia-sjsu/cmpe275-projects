@@ -1,18 +1,18 @@
-#ifndef POPULATION_DATA_MANAGER_HPP
-#define POPULATION_DATA_MANAGER_HPP
+#ifndef POPULATION_DATA_MANAGER_HASH_HPP
+#define POPULATION_DATA_MANAGER_HASH_HPP
 
-#include <vector>
-#include <map>
+#include <unordered_map>
 #include <string>
+#include <vector>
 #include "PopulationDTO.hpp"
 
-class PopulationDataManager {
+class PopulationDataManagerHash {
 private:
-    // Storage: Vector of all country data (baseline approach)
-    std::vector<PopulationDTO> countries;
+
+    std::unordered_map<std::string, PopulationDTO> countriesHash;
 
 public:
-    PopulationDataManager() = default;
+    PopulationDataManagerHash() = default;
     
     void loadFromCSV(const std::string& filename);
     
@@ -27,7 +27,7 @@ public:
     std::vector<long> getTimeSeries(const std::string& countryCode, 
                                     int startYear, int endYear) const;
     
-    const std::vector<PopulationDTO>& getAllCountries() const;
+    const std::unordered_map<std::string, PopulationDTO>& getAllCountries() const;
 };
 
-#endif // POPULATION_DATA_MANAGER_HPP
+#endif // POPULATION_DATA_MANAGER_HASH_HPP

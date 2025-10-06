@@ -45,7 +45,7 @@ public:
     }
 
     const std::vector<long>& getPopulation() const {
-        return population; // Return const reference to prevent modification
+        return population;
     }
 
     void setCountryName(const std::string& countryName) {
