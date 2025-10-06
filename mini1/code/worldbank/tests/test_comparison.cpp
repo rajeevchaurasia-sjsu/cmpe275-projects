@@ -3,7 +3,7 @@
 #include "PopulationDTO.hpp"
 #include "PopulationDataManager.hpp"
 #include "PopulationDataManagerMap.hpp"
-#include "PopulationDataManagerHash.hpp"  // ⬅️ Add this
+#include "PopulationDataManagerHash.hpp"
 #include "../utils/BenchMarkTimer.hpp"
 
 void printSeparator(const std::string& title = "") {
@@ -26,9 +26,9 @@ int main() {
     
     PopulationDataManager vectorImpl;
     PopulationDataManagerMap mapImpl;
-    PopulationDataManagerHash hashImpl;  // ⬅️ Add this
+    PopulationDataManagerHash hashImpl;
     
-    long vectorLoadTime, mapLoadTime, hashLoadTime;  // ⬅️ Add hashLoadTime
+    long vectorLoadTime, mapLoadTime, hashLoadTime;
     
     {
         BenchmarkTimer timer("Vector Load", false);
@@ -44,7 +44,6 @@ int main() {
         std::cout << "[Map] Load time: " << mapLoadTime << " ms" << std::endl;
     }
     
-    // ⬅️ Add hash loading test
     {
         BenchmarkTimer timer("Hash Load", false);
         hashImpl.loadFromCSV(csvPath);
@@ -55,16 +54,16 @@ int main() {
     std::cout << "\nCountries loaded:" << std::endl;
     std::cout << "  Vector: " << vectorImpl.getCountryCount() << std::endl;
     std::cout << "  Map: " << mapImpl.getCountryCount() << std::endl;
-    std::cout << "  Hash: " << hashImpl.getCountryCount() << std::endl;  // ⬅️ Add this
+    std::cout << "  Hash: " << hashImpl.getCountryCount() << std::endl;
     
     // ============================================
     // TEST 2: Single Point Query Performance
     // ============================================
     printSeparator("TEST 2: Single Point Query (USA, 2020)");
     
-    long vectorQueryTime, mapQueryTime, hashQueryTime;  // ⬅️ Add hashQueryTime
-    long vectorResult, mapResult, hashResult;  // ⬅️ Add hashResult
-    
+    long vectorQueryTime, mapQueryTime, hashQueryTime;
+    long vectorResult, mapResult, hashResult;
+
     {
         BenchmarkTimer timer("Vector Query", false);
         vectorResult = vectorImpl.getPopulation("USA", 2020);
@@ -79,7 +78,6 @@ int main() {
         std::cout << "[Map] Query time: " << mapQueryTime << " µs, Result: " << mapResult << std::endl;
     }
     
-    // ⬅️ Add hash query test
     {
         BenchmarkTimer timer("Hash Query", false);
         hashResult = hashImpl.getPopulation("USA", 2020);
@@ -101,7 +99,7 @@ int main() {
     std::vector<std::string> testCountries = {"USA", "IND", "CHN", "BRA", "DEU", "JPN", "GBR", "FRA", "ITA", "CAN"};
     const int numQueries = 1000;
     
-    long vectorTotalTime, mapTotalTime, hashTotalTime;  // ⬅️ Add hashTotalTime
+    long vectorTotalTime, mapTotalTime, hashTotalTime;
     
     {
         BenchmarkTimer timer("Vector 1000 Queries", false);
@@ -122,8 +120,7 @@ int main() {
         std::cout << "[Map] Total: " << mapTotalTime << " µs, Avg: " 
                   << (mapTotalTime / numQueries) << " µs per query" << std::endl;
     }
-    
-    // ⬅️ Add hash bulk query test
+
     {
         BenchmarkTimer timer("Hash 1000 Queries", false);
         for (int i = 0; i < numQueries; i++) {
@@ -152,8 +149,7 @@ int main() {
         long time = timer.getMicroseconds();
         std::cout << "[Map] Time: " << time << " µs, Data points: " << series.size() << std::endl;
     }
-    
-    // ⬅️ Add hash time series test
+
     {
         BenchmarkTimer timer("Hash Time Series", false);
         auto series = hashImpl.getTimeSeries("IND", 1960, 2023);

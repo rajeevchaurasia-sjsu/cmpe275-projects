@@ -26,7 +26,7 @@ long PopulationDataManagerMap::getPopulation(const std::string& countryCode, int
 }
 
 const PopulationDTO* PopulationDataManagerMap::getCountryData(const std::string& countryCode) const {
-    // O(log n) lookup using map
+    
     auto it = countriesMap.find(countryCode);
     if (it != countriesMap.end()) {
         return &(it->second);

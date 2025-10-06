@@ -25,7 +25,7 @@ long PopulationDataManagerHash::getPopulation(const std::string& countryCode, in
 }
 
 const PopulationDTO* PopulationDataManagerHash::getCountryData(const std::string& countryCode) const {
-    // O(1) average lookup using hash map
+    
     auto it = countriesHash.find(countryCode);
     if (it != countriesHash.end()) {
         return &(it->second);
