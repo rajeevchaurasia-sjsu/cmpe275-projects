@@ -1,5 +1,5 @@
 #include <iostream>
-#include "AirQualityDataManager.h"
+#include "AirQualityDataManager.hpp"
 #include "utils/BenchMarkTimer.hpp"
 
 void printSeparator() {

@@ -2,7 +2,7 @@
 #include <map>
 #include <string>
 #include <filesystem>
-#include "AirQualityReading.h"
+#include "AirQualityReading.hpp"
 
 namespace fs = std::filesystem;
 
@@ -13,10 +13,13 @@ private:
     std::map<std::string, std::vector<AirQualityReading>> readingsByPollutant;
 
 public:
-    // Loading methods
+    // Loading methods (Serial)
     void loadFromCSV(const std::string &filename);
     void loadFromDateFolder(const std::string &dateFolderPath);
     void loadFromDirectory(const std::string &rootPath);
+    
+    // NEW: Parallel loading methods
+    void loadFromDirectoryParallel(const std::string &rootPath, int numThreads = 4);
     
     // Clear all data
     void clear();
@@ -29,13 +32,21 @@ public:
     std::vector<AirQualityReading> getReadingsByDate(const std::string &date) const;
     std::vector<AirQualityReading> getReadingsByPollutant(const std::string &pollutantType) const;
     
-    // Range query methods (useful for benchmarking)
+    // Range query methods
     std::vector<AirQualityReading> getReadingsByAQIRange(int minAQI, int maxAQI) const;
     
-    // Aggregation methods (good for parallel processing tests)
+    // NEW: Parallel range query
+    std::vector<AirQualityReading> getReadingsByAQIRangeParallel(int minAQI, int maxAQI) const;
+    
+    // Aggregation methods (Serial)
     double getAveragePollutantValue(const std::string &pollutantType) const;
     double getMaxPollutantValue(const std::string &pollutantType) const;
     int countReadingsAboveAQI(int threshold) const;
+    
+    // NEW: Parallel aggregation methods
+    double getAveragePollutantValueParallel(const std::string &pollutantType) const;
+    double getMaxPollutantValueParallel(const std::string &pollutantType) const;
+    int countReadingsAboveAQIParallel(int threshold) const;
     
     // Metadata methods
     std::vector<std::string> getAllDates() const;

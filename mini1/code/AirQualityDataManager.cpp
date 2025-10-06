@@ -1,9 +1,11 @@
-#include "AirQualityDataManager.h"
+#include "AirQualityDataManager.hpp"
 #include "utils/CSVParser.hpp"
 #include <fstream>
 #include <iostream>
 #include <algorithm>
 #include <limits>
+#include <omp.h>
+#include <mutex>
 
 // Load data from a single CSV file
 void AirQualityDataManager::loadFromCSV(const std::string &filename) {
@@ -213,4 +215,129 @@ std::vector<std::string> AirQualityDataManager::getAllPollutantTypes() const {
     }
     
     return types;
+}
+
+// Parallel loading of directory
+void AirQualityDataManager::loadFromDirectoryParallel(const std::string &rootPath, int numThreads) {
+    // Set number of threads
+    omp_set_num_threads(numThreads);
+    
+    // Get all folder paths first
+    std::vector<std::string> folderPaths;
+    try {
+        for (const auto &entry : fs::directory_iterator(rootPath)) {
+            if (entry.is_directory()) {
+                folderPaths.push_back(entry.path().string());
+            }
+        }
+    } catch (const fs::filesystem_error &e) {
+        std::cerr << "Error reading root directory " << rootPath 
+                  << ": " << e.what() << std::endl;
+        return;
+    }
+    
+    // Mutex for thread-safe container access
+    std::mutex dataMutex;
+    
+    // Parallel loading
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < folderPaths.size(); i++) {
+        std::cout << "Thread " << omp_get_thread_num() 
+                  << " loading: " << fs::path(folderPaths[i]).filename() << std::endl;
+        
+        // Create temporary manager for this thread
+        AirQualityDataManager tempManager;
+        tempManager.loadFromDateFolder(folderPaths[i]);
+        
+        // Merge into main manager (critical section)
+        #pragma omp critical
+        {
+            auto tempReadings = tempManager.getAllReadings();
+            for (const auto &reading : tempReadings) {
+                readings.push_back(reading);
+                readingsByDate[reading.getDatetime()].push_back(reading);
+                readingsByPollutant[reading.getPollutantType()].push_back(reading);
+            }
+        }
+    }
+}
+
+// Parallel range query
+std::vector<AirQualityReading> AirQualityDataManager::getReadingsByAQIRangeParallel(int minAQI, int maxAQI) const {
+    std::vector<AirQualityReading> result;
+    std::mutex resultMutex;
+    
+    #pragma omp parallel
+    {
+        std::vector<AirQualityReading> localResult;
+        
+        #pragma omp for nowait
+        for (size_t i = 0; i < readings.size(); i++) {
+            int aqi = readings[i].getAirQualityIndex();
+            if (aqi >= minAQI && aqi <= maxAQI) {
+                localResult.push_back(readings[i]);
+            }
+        }
+        
+        // Merge local results
+        #pragma omp critical
+        {
+            result.insert(result.end(), localResult.begin(), localResult.end());
+        }
+    }
+    
+    return result;
+}
+
+// Parallel average calculation
+double AirQualityDataManager::getAveragePollutantValueParallel(const std::string &pollutantType) const {
+    auto pollutantReadings = getReadingsByPollutant(pollutantType);
+    
+    if (pollutantReadings.empty()) {
+        return 0.0;
+    }
+    
+    double sum = 0.0;
+    
+    #pragma omp parallel for reduction(+:sum)
+    for (size_t i = 0; i < pollutantReadings.size(); i++) {
+        sum += pollutantReadings[i].getValue();
+    }
+    
+    return sum / pollutantReadings.size();
+}
+
+// Parallel max calculation
+double AirQualityDataManager::getMaxPollutantValueParallel(const std::string &pollutantType) const {
+    auto pollutantReadings = getReadingsByPollutant(pollutantType);
+    
+    if (pollutantReadings.empty()) {
+        return 0.0;
+    }
+    
+    double maxValue = std::numeric_limits<double>::lowest();
+    
+    #pragma omp parallel for reduction(max:maxValue)
+    for (size_t i = 0; i < pollutantReadings.size(); i++) {
+        double val = pollutantReadings[i].getValue();
+        if (val > maxValue) {
+            maxValue = val;
+        }
+    }
+    
+    return maxValue;
+}
+
+// Parallel count
+int AirQualityDataManager::countReadingsAboveAQIParallel(int threshold) const {
+    int count = 0;
+    
+    #pragma omp parallel for reduction(+:count)
+    for (size_t i = 0; i < readings.size(); i++) {
+        if (readings[i].getAirQualityIndex() > threshold) {
+            count++;
+        }
+    }
+    
+    return count;
 }
