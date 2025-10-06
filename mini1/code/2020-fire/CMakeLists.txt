@@ -25,12 +25,15 @@ endif()
 
 find_package(OpenMP REQUIRED)
 
+include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/../utils)
+
 # Add executable for main test program
 add_executable(air_quality_test
-    main.cpp
+    tests/main.cpp
     AirQualityDataManager.cpp
-    utils/CSVParser.cpp
-    utils/BenchmarkTimer.cpp
+    ../utils/CSVParser.cpp
+    ../utils/BenchmarkTimer.cpp
 )
 
 # Link OpenMP
@@ -40,10 +43,10 @@ endif()
 
 # Add parallel benchmark executable
 add_executable(parallel_benchmark
-    parallel_benchmark.cpp
+    tests/parallel_benchmark.cpp
     AirQualityDataManager.cpp
-    utils/CSVParser.cpp
-    utils/BenchmarkTimer.cpp
+    ../utils/CSVParser.cpp
+    ../utils/BenchmarkTimer.cpp
 )
 
 if(OpenMP_CXX_FOUND)

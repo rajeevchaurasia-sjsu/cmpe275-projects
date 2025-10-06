@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include "AirQualityDataManager.hpp"
-#include "utils/BenchMarkTimer.hpp"
+#include "BenchMarkTimer.hpp"
 
 void printSeparator() {
     std::cout << "================================================" << std::endl;
@@ -133,7 +133,7 @@ int main() {
     std::cout << "  SERIAL vs PARALLEL PERFORMANCE COMPARISON" << std::endl;
     std::cout << "================================================" << std::endl;
     
-    std::string dataRoot = "../../data/2020-fire/data";
+    std::string dataRoot = "../../../data/2020-fire/data";
     
     // Test 1: Loading performance
     compareLoadingPerformance(dataRoot);

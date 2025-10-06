@@ -1,6 +1,6 @@
 #include <iostream>
 #include "AirQualityDataManager.hpp"
-#include "utils/BenchMarkTimer.hpp"
+#include "BenchMarkTimer.hpp"
 
 void printSeparator() {
     std::cout << "================================================" << std::endl;

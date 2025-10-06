@@ -1,3 +1,7 @@
+
+#ifndef AIR_QUALITY_READING_HPP
+#define AIR_QUALITY_READING_HPP
+
 #include <string>
 
 class AirQualityReading
@@ -54,3 +58,5 @@ public:
     std::string getFullSiteId() const { return fullSiteId; }
 
 };
+
+#endif // AIR_QUALITY_READING_HPP

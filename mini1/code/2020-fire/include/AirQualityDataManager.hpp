@@ -1,3 +1,7 @@
+
+#ifndef AIR_QUALITY_DATA_MANAGER_HPP
+#define AIR_QUALITY_DATA_MANAGER_HPP
+
 #include <vector>
 #include <map>
 #include <string>
@@ -52,3 +56,5 @@ public:
     std::vector<std::string> getAllDates() const;
     std::vector<std::string> getAllPollutantTypes() const;
 };
+
+#endif // AIR_QUALITY_DATA_MANAGER_HPP
