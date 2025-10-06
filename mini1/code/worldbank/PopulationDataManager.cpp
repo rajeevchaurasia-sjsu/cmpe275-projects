@@ -3,7 +3,6 @@
 
 void PopulationDataManager::loadFromCSV(const std::string& filename) {
     
-    // Use common CSV loader with callback to store data
     WorldBankCSVLoader::loadFromCSV(filename, [this](const PopulationDTO& dto) {
         countries.push_back(dto);
     });
@@ -27,13 +26,13 @@ long PopulationDataManager::getPopulation(const std::string& countryCode, int ye
 }
 
 const PopulationDTO* PopulationDataManager::getCountryData(const std::string& countryCode) const {
-    // Linear search (baseline - can be optimized later)
+    // Linear search
     for (const auto& country : countries) {
         if (country.getCountryCode() == countryCode) {
             return &country;
         }
     }
-    return nullptr; // Not found
+    return nullptr;
 }
 
 std::vector<long> PopulationDataManager::getTimeSeries(const std::string& countryCode, 

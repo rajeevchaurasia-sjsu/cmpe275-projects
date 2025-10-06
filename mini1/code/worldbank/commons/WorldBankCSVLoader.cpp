@@ -14,7 +14,6 @@ int WorldBankCSVLoader::loadFromCSV(
         return 0;
     }
     
-    // Skip metadata/header lines
     if (!skipMetadataLines(file)) {
         std::cerr << "Error: Failed to skip metadata lines" << std::endl;
         return 0;
@@ -22,7 +21,6 @@ int WorldBankCSVLoader::loadFromCSV(
     
     std::cout << "Skipped metadata lines, starting data load..." << std::endl;
     
-    // Read and parse data lines
     std::string line;
     int countriesLoaded = 0;
     
@@ -38,11 +36,9 @@ int WorldBankCSVLoader::loadFromCSV(
             continue;
         }
         
-        // Extract metadata
         std::string countryName = CSVParser::removeQuotes(fields[0]);
         std::string countryCode = CSVParser::removeQuotes(fields[1]);
         
-        // Create DTO
         PopulationDTO dto;
         dto.setCountryName(countryName);
         dto.setCountryCode(countryCode);
@@ -65,7 +61,6 @@ int WorldBankCSVLoader::loadFromCSV(
             }
         }
         
-        // Invoke callback with parsed DTO
         callback(dto);
         countriesLoaded++;
     }
