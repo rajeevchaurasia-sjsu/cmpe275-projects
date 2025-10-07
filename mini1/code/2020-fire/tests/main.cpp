@@ -119,7 +119,6 @@ int main() {
     // ============================================================
     std::cout << "\n[TEST 4] Query Performance Tests..." << std::endl;
     
-    // Test indexed query (should be fast - O(log n))
     BenchmarkTimer timer4a;
     timer4a.start();
     auto pm25Results = manager.getReadingsByPollutant("PM2.5");
@@ -127,7 +126,6 @@ int main() {
     std::cout << "✓ Indexed query (by pollutant): " << timer4a.getMicroseconds() 
               << " μs, found " << pm25Results.size() << " readings" << std::endl;
     
-    // Test range query (requires scan - O(n))
     BenchmarkTimer timer4b;
     timer4b.start();
     auto aqiResults = manager.getReadingsByAQIRange(50, 100);
@@ -135,7 +133,6 @@ int main() {
     std::cout << "✓ Range query (AQI 50-100): " << timer4b.getMicroseconds() 
               << " μs, found " << aqiResults.size() << " readings" << std::endl;
     
-    // Test aggregation (requires scan and calculation - O(n))
     BenchmarkTimer timer4c;
     timer4c.start();
     double avgAll = manager.getAveragePollutantValue("PM2.5");

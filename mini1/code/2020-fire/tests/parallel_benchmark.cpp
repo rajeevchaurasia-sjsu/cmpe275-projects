@@ -138,7 +138,6 @@ int main() {
     // Test 1: Loading performance
     compareLoadingPerformance(dataRoot);
     
-    // Load data once for query/aggregation tests
     std::cout << "\n\nLoading data for query/aggregation tests..." << std::endl;
     AirQualityDataManager manager;
     manager.loadFromDirectory(dataRoot);

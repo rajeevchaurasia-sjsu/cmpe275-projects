@@ -22,9 +22,8 @@ void AirQualityDataManager::loadFromCSV(const std::string &filename) {
     while (std::getline(file, line)) {
         lineNumber++;
         
-        if (CSVParser::isEmpty(line)) continue;  // Use utility
+        if (CSVParser::isEmpty(line)) continue;
         
-        // Parse the line using CSVParser utility
         std::vector<std::string> fields = CSVParser::parseLine(line);
         
         // Check if we have all 13 fields
@@ -136,7 +135,7 @@ std::vector<AirQualityReading> AirQualityDataManager::getReadingsByPollutant(con
     return std::vector<AirQualityReading>();  // Empty vector if not found
 }
 
-// Get readings within an AQI range (needs to scan all - good for benchmarking!)
+// Get readings within an AQI range (needs to scan all, good for benchmarking)
 std::vector<AirQualityReading> AirQualityDataManager::getReadingsByAQIRange(int minAQI, int maxAQI) const {
     std::vector<AirQualityReading> result;
     
