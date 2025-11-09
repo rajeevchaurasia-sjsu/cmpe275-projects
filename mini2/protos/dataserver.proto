@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package mini2;
+
+// request message containing user's query
+message Request {
+    string name = 1;
+}
+
+// represents Air Quality reading
+message AirQualityData {
+    string datetime = 1;
+    string timezone = 2;
+    string location = 3;
+    double latitude = 4;
+    double longitude = 5;
+    string aqi_parameter = 6;
+    double aqi_value = 7;
+    string aqi_unit = 8;
+    string aqi_category = 9;
+}
+
+// represents a chunk of data sent from server to the client
+message DataChunk {
+  repeated AirQualityData data = 1;
+  string request_id = 2;
+  bool has_more_chunks = 3;
+}
+
+// request to get next chunk of data
+message ChunkRequest {
+  string request_id = 1;
+}
+
+// request to cancel data transfer
+message CancelRequestMessage {
+  string request_id = 1;
+}
+
+// acknowledgment message
+message Ack {
+  bool success = 1;
+}
+
+// service definition
+service DataService {
+    // Initiates a data request and returns the first chunk of data
+    rpc InitiateDataRequest (Request) returns (DataChunk) {}
+
+    // Retrieves the next chunk of data for given request id
+    rpc GetNextChunk (ChunkRequest) returns (DataChunk) {}
+
+    // Cancels ongoing data request
+    rpc CancelRequest (CancelRequestMessage) returns (Ack) {}
+}

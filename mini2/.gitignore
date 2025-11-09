@@ -1,0 +1,60 @@
+# Build directories and artifacts
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Generated protobuf files
+generated/
+*.pb.h
+*.pb.cc
+*.grpc.pb.h
+*.grpc.pb.cc
+
+# Executables
+server_a
+server_b
+server_c
+server_d
+server_e
+client
+*.exe
+*.out
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Data files
+data/
+*.csv
+*.json
+
+# Network configuration (contains IPs that might change)
+network_config.txt
