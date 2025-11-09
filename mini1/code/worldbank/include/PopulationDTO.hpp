@@ -19,7 +19,7 @@ public:
     PopulationDTO() {
         countryName = "";
         countryCode = "";
-        population.resize(NUM_YEARS, -1); // Initialize with -1 for missing data
+        population.resize(NUM_YEARS, -1);
     }
 
     PopulationDTO(const std::string& countryName, 

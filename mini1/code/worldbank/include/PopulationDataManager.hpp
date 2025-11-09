@@ -8,7 +8,7 @@
 
 class PopulationDataManager {
 private:
-    // Storage: Vector of all country data (baseline approach)
+    
     std::vector<PopulationDTO> countries;
 
 public:

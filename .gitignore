@@ -1,0 +1,3 @@
+# ignore all DS_Store files in any directory or root level
+**/.DS_Store
+.DS_Store
