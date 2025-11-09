@@ -7,6 +7,46 @@ project(Mini2DataService)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Try to find OpenMP properly
+find_package(OpenMP QUIET)
+
+# If OpenMP is not found, try alternative detection for macOS
+if(NOT OpenMP_CXX_FOUND AND APPLE)
+    # Try to find Homebrew OpenMP
+    find_path(OpenMP_INCLUDE_DIR NAMES omp.h
+        PATHS /opt/homebrew/opt/libomp/include
+              /usr/local/opt/libomp/include
+              /opt/local/include/libomp
+    )
+
+    find_library(OpenMP_LIBRARY NAMES omp
+        PATHS /opt/homebrew/opt/libomp/lib
+              /usr/local/opt/libomp/lib
+              /opt/local/lib
+    )
+
+    if(OpenMP_INCLUDE_DIR AND OpenMP_LIBRARY)
+        # Create OpenMP target
+        add_library(OpenMP::OpenMP_CXX INTERFACE IMPORTED)
+        set_target_properties(OpenMP::OpenMP_CXX PROPERTIES
+            INTERFACE_COMPILE_OPTIONS "-Xpreprocessor;-fopenmp;-I${OpenMP_INCLUDE_DIR}"
+            INTERFACE_LINK_LIBRARIES "${OpenMP_LIBRARY}"
+        )
+        set(OpenMP_CXX_FOUND TRUE)
+        message(STATUS "OpenMP found via manual detection: ${OpenMP_LIBRARY}")
+    endif()
+endif()
+
+# Final check - OpenMP is preferred but not strictly required
+if(OpenMP_CXX_FOUND)
+    message(STATUS "OpenMP found - enabling parallel processing")
+    set(USE_OPENMP TRUE)
+else()
+    message(WARNING "OpenMP not found - falling back to sequential processing")
+    message(WARNING "For better performance, install OpenMP: brew install libomp")
+    set(USE_OPENMP FALSE)
+endif()
+
 find_package(gRPC REQUIRED)
 find_package(Protobuf REQUIRED)
 
@@ -64,8 +104,12 @@ target_link_libraries(server_a protos_lib gRPC::grpc++ gRPC::grpc protobuf::libp
 add_executable(server_b src/server_b.cpp)
 target_link_libraries(server_b protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
 
-add_executable(server_c src/server_c.cpp)
+add_executable(server_c src/server_c.cpp src/AirQualityDataManager.cpp utils/CSVParser.cpp)
 target_link_libraries(server_c protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+if(USE_OPENMP)
+    target_link_libraries(server_c OpenMP::OpenMP_CXX)
+    target_compile_definitions(server_c PRIVATE USE_OPENMP)
+endif()
 
 add_executable(server_d src/server_d.cpp)
 target_link_libraries(server_d protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
