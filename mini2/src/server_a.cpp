@@ -21,30 +21,6 @@ using mini2::ChunkRequest;
 using mini2::CancelRequestMessage;
 using mini2::Ack;
 
-#include <iostream>
-#include <memory>
-#include <string>
-#include <grpcpp/grpcpp.h>
-#include <thread>
-#include <mutex>
-#include <unordered_map>
-#include <vector>
-#include <deque>
-#include "dataserver.grpc.pb.h"
-#include "dataserver.pb.h"
-
-using grpc::Server;
-using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::Status;
-using grpc::ClientContext;
-using mini2::DataService;
-using mini2::Request;
-using mini2::DataChunk;
-using mini2::ChunkRequest;
-using mini2::CancelRequestMessage;
-using mini2::Ack;
-
 // Structure to track chunked request state
 struct ChunkedRequest {
   std::deque<DataChunk> chunks;
@@ -63,8 +39,13 @@ class LeaderServiceImpl final : public DataService::Service {
     // B: Green team leader, D: Pink team leader
     team_b_stub_ = DataService::NewStub(
         grpc::CreateChannel("localhost:50052", grpc::InsecureChannelCredentials()));
+    // COMMENT OUT PINK TEAM (D) - NOT IMPLEMENTED YET
+    /*
+    std::cout << "Server A: Connecting to Team D (Pink) at localhost:50054" << std::endl;
     team_d_stub_ = DataService::NewStub(
         grpc::CreateChannel("localhost:50054", grpc::InsecureChannelCredentials()));
+    std::cout << "Server A: Connected to Team D (Pink): localhost:50054" << std::endl;
+    */
 
     // Start cleanup thread for expired requests
     cleanup_thread_ = std::thread(&LeaderServiceImpl::cleanupExpiredRequests, this);
@@ -89,17 +70,21 @@ class LeaderServiceImpl final : public DataService::Service {
     std::mutex results_mutex;
     std::vector<std::vector<mini2::AirQualityData>> team_results;
 
+    // Query Green team
     team_threads.emplace_back([&, request]() {
       std::vector<mini2::AirQualityData> data = queryTeam("green", request);
       std::lock_guard<std::mutex> lock(results_mutex);
       team_results.push_back(data);
     });
 
+    // COMMENT OUT PINK TEAM QUERY
+    /*
     team_threads.emplace_back([&, request]() {
       std::vector<mini2::AirQualityData> data = queryTeam("pink", request);
       std::lock_guard<std::mutex> lock(results_mutex);
       team_results.push_back(data);
     });
+    */
 
     // Wait for all team responses
     for (auto& thread : team_threads) {
@@ -205,9 +190,19 @@ class LeaderServiceImpl final : public DataService::Service {
 
       Status status;
       if (team == "green") {
+        std::cout << "Server A: Querying team " << team << "..." << std::endl;
         status = team_b_stub_->InitiateDataRequest(&context, *request, &response);
-      } else if (team == "pink") {
+      } 
+      // COMMENT OUT PINK TEAM QUERY
+      /*
+      else if (team == "pink") {
+        std::cout << "Server A: Querying team " << team << "..." << std::endl;
         status = team_d_stub_->InitiateDataRequest(&context, *request, &response);
+      }
+      */
+      else {
+        std::cout << "Server A: Unknown team: " << team << std::endl;
+        return result;
       }
 
       if (status.ok()) {
@@ -226,25 +221,36 @@ class LeaderServiceImpl final : public DataService::Service {
           Status chunk_status;
           if (team == "green") {
             chunk_status = team_b_stub_->GetNextChunk(&chunk_context, chunk_req, &next_chunk);
-          } else {
+          } 
+          // COMMENT OUT PINK CHUNK FETCHING
+          /*
+          else {
             chunk_status = team_d_stub_->GetNextChunk(&chunk_context, chunk_req, &next_chunk);
+          }
+          */
+          else {
+            break;
           }
 
           if (chunk_status.ok()) {
+            std::cout << "Server A: Got chunk with " << next_chunk.data_size() << " items from team " << team << std::endl;
             for (const auto& data : next_chunk.data()) {
               result.push_back(data);
             }
             response.set_has_more_chunks(next_chunk.has_more_chunks());
           } else {
+            std::cerr << "Server A: Failed to get next chunk from team " << team << std::endl;
             break;
           }
         }
+        
+        std::cout << "Server A: Total collected " << result.size() << " items from team " << team << std::endl;
       } else {
-        std::cout << "Server A: Failed to query team " << team
+        std::cerr << "Server A: Failed to query team " << team
                   << ": " << status.error_message() << std::endl;
       }
     } catch (const std::exception& e) {
-      std::cout << "Server A: Exception querying team " << team << ": " << e.what() << std::endl;
+      std::cerr << "Server A: Exception querying team " << team << ": " << e.what() << std::endl;
     }
 
     return result;
@@ -269,7 +275,8 @@ class LeaderServiceImpl final : public DataService::Service {
   }
 
   std::unique_ptr<DataService::Stub> team_b_stub_;  // Green team leader
-  std::unique_ptr<DataService::Stub> team_d_stub_;  // Pink team leader
+  // COMMENT OUT PINK TEAM STUB
+  // std::unique_ptr<DataService::Stub> team_d_stub_;  // Pink team leader
 
   std::mutex requests_mutex_;
   std::unordered_map<std::string, ChunkedRequest> chunked_requests_;
@@ -287,15 +294,21 @@ void RunServer() {
   builder.RegisterService(&service);
 
   std::unique_ptr<Server> server(builder.BuildAndStart());
+  
+  std::cout << "========================================" << std::endl;
   std::cout << "Server A (Leader) listening on " << server_address << std::endl;
   std::cout << "Connected to Team B (Green): localhost:50052" << std::endl;
-  std::cout << "Connected to Team D (Pink): localhost:50054" << std::endl;
-  std::cout << "Chunking enabled - supports large dataset segmentation" << std::endl;
+  // COMMENT OUT PINK TEAM LOG
+  // std::cout << "Connected to Team D (Pink): localhost:50054" << std::endl;
+  std::cout << "Testing with GREEN TEAM ONLY (B, C)" << std::endl;
+  std::cout << "Chunking enabled - 10 items per chunk" << std::endl;
+  std::cout << "========================================" << std::endl;
 
   server->Wait();
 }
 
 int main(int argc, char** argv) {
+  std::cout << "Server A (Leader) starting..." << std::endl;
   RunServer();
   return 0;
 }

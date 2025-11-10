@@ -103,27 +103,27 @@ add_custom_target(generate_protos DEPENDS
     ${GENERATED_DIR}/dataserver.grpc.pb.h
 )
 
-target_link_libraries(protos_lib PUBLIC gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(protos_lib PUBLIC gRPC::grpc++ protobuf::libprotobuf)
 
 # Executables
 add_executable(server_a src/server_a.cpp)
-target_link_libraries(server_a protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_a protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(server_b src/server_b.cpp)
-target_link_libraries(server_b protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_b protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(server_c src/server_c.cpp src/AirQualityDataManager.cpp utils/CSVParser.cpp)
-target_link_libraries(server_c protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_c protos_lib gRPC::grpc++ protobuf::libprotobuf)
 if(USE_OPENMP)
     target_link_libraries(server_c OpenMP::OpenMP_CXX)
     target_compile_definitions(server_c PRIVATE USE_OPENMP)
 endif()
 
 add_executable(server_d src/server_d.cpp)
-target_link_libraries(server_d protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_d protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(server_e src/server_e.cpp)
-target_link_libraries(server_e protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_e protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(client src/client.cpp)
-target_link_libraries(client protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(client protos_lib gRPC::grpc++ protobuf::libprotobuf)
