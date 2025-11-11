@@ -51,10 +51,5 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Data files
-data/
-*.csv
-*.json
-
 # Network configuration (contains IPs that might change)
 network_config.txt
