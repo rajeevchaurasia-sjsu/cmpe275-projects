@@ -1,0 +1,120 @@
+37.7749,-122.4194,2020-08-26T12:00:00Z,PM2.5,25.98,µg/m³,28.84,51,2,San Francisco,California Air Resources Board,CA_San_Francisco_2091,CA_San_Francisco_32634
+37.7749,-122.4194,2020-08-26T12:23:00Z,PM10,158.83,µg/m³,130.52,238,5,San Francisco,California Air Resources Board,CA_San_Francisco_6861,CA_San_Francisco_81777
+37.7749,-122.4194,2020-08-26T12:37:00Z,O3,0.02,ppm,0.01,1,1,San Francisco,California Air Resources Board,CA_San_Francisco_3034,CA_San_Francisco_41249
+37.7749,-122.4194,2020-08-26T12:03:00Z,NO2,0.02,ppm,0.02,2,1,San Francisco,California Air Resources Board,CA_San_Francisco_7697,CA_San_Francisco_48491
+37.7749,-122.4194,2020-08-26T12:12:00Z,SO2,0.01,ppm,0.01,0,1,San Francisco,California Air Resources Board,CA_San_Francisco_9802,CA_San_Francisco_86833
+37.7749,-122.4194,2020-08-26T12:33:00Z,CO,0.23,ppm,0.21,22,1,San Francisco,California Air Resources Board,CA_San_Francisco_6512,CA_San_Francisco_73914
+37.8044,-122.2711,2020-08-26T12:24:00Z,PM2.5,87.9,µg/m³,96.86,175,4,Oakland,California Air Resources Board,CA_Oakland_8474,CA_Oakland_80876
+37.8044,-122.2711,2020-08-26T12:12:00Z,PM10,98.22,µg/m³,97.49,147,3,Oakland,California Air Resources Board,CA_Oakland_8512,CA_Oakland_77260
+37.8044,-122.2711,2020-08-26T12:06:00Z,O3,0.05,ppm,0.04,4,1,Oakland,California Air Resources Board,CA_Oakland_1918,CA_Oakland_63228
+37.8044,-122.2711,2020-08-26T12:47:00Z,NO2,0.04,ppm,0.05,4,1,Oakland,California Air Resources Board,CA_Oakland_5483,CA_Oakland_83781
+37.8044,-122.2711,2020-08-26T12:39:00Z,SO2,0.03,ppm,0.02,2,1,Oakland,California Air Resources Board,CA_Oakland_9033,CA_Oakland_83883
+37.8044,-122.2711,2020-08-26T12:40:00Z,CO,9.59,ppm,10.01,500,6,Oakland,California Air Resources Board,CA_Oakland_1474,CA_Oakland_61324
+37.8715,-122.273,2020-08-26T12:48:00Z,PM2.5,72.93,µg/m³,80.21,145,3,Berkeley,California Air Resources Board,CA_Berkeley_7853,CA_Berkeley_97431
+37.8715,-122.273,2020-08-26T12:57:00Z,PM10,57.51,µg/m³,49.3,86,2,Berkeley,California Air Resources Board,CA_Berkeley_9583,CA_Berkeley_88260
+37.8715,-122.273,2020-08-26T12:33:00Z,O3,0.03,ppm,0.03,3,1,Berkeley,California Air Resources Board,CA_Berkeley_7765,CA_Berkeley_40874
+37.8715,-122.273,2020-08-26T12:57:00Z,NO2,0.03,ppm,0.03,3,1,Berkeley,California Air Resources Board,CA_Berkeley_6449,CA_Berkeley_72518
+37.8715,-122.273,2020-08-26T12:52:00Z,SO2,0.03,ppm,0.02,2,1,Berkeley,California Air Resources Board,CA_Berkeley_3377,CA_Berkeley_99737
+37.8715,-122.273,2020-08-26T12:28:00Z,CO,8.5,ppm,7.14,500,6,Berkeley,California Air Resources Board,CA_Berkeley_9116,CA_Berkeley_64502
+37.3382,-121.8863,2020-08-26T12:24:00Z,PM2.5,28.51,µg/m³,30.15,57,2,San Jose,California Air Resources Board,CA_San_Jose_6213,CA_San_Jose_38840
+37.3382,-121.8863,2020-08-26T12:38:00Z,PM10,233.21,µg/m³,252.2,349,6,San Jose,California Air Resources Board,CA_San_Jose_1745,CA_San_Jose_65856
+37.3382,-121.8863,2020-08-26T12:49:00Z,O3,0.05,ppm,0.05,4,1,San Jose,California Air Resources Board,CA_San_Jose_7588,CA_San_Jose_85548
+37.3382,-121.8863,2020-08-26T12:54:00Z,NO2,0.02,ppm,0.02,1,1,San Jose,California Air Resources Board,CA_San_Jose_3778,CA_San_Jose_86842
+37.3382,-121.8863,2020-08-26T12:47:00Z,SO2,0.03,ppm,0.03,2,1,San Jose,California Air Resources Board,CA_San_Jose_5968,CA_San_Jose_30153
+37.3382,-121.8863,2020-08-26T12:08:00Z,CO,15.4,ppm,13.14,500,6,San Jose,California Air Resources Board,CA_San_Jose_5530,CA_San_Jose_99028
+37.4419,-122.143,2020-08-26T12:09:00Z,PM2.5,216.33,µg/m³,201.2,432,6,Palo Alto,California Air Resources Board,CA_Palo_Alto_4170,CA_Palo_Alto_33441
+37.4419,-122.143,2020-08-26T12:55:00Z,PM10,95.71,µg/m³,108.06,143,3,Palo Alto,California Air Resources Board,CA_Palo_Alto_3801,CA_Palo_Alto_97009
+37.4419,-122.143,2020-08-26T12:11:00Z,O3,0.08,ppm,0.08,8,1,Palo Alto,California Air Resources Board,CA_Palo_Alto_4234,CA_Palo_Alto_95118
+37.4419,-122.143,2020-08-26T12:23:00Z,NO2,0.03,ppm,0.03,2,1,Palo Alto,California Air Resources Board,CA_Palo_Alto_3047,CA_Palo_Alto_49724
+37.4419,-122.143,2020-08-26T12:17:00Z,SO2,0.01,ppm,0.01,1,1,Palo Alto,California Air Resources Board,CA_Palo_Alto_6140,CA_Palo_Alto_78624
+37.4419,-122.143,2020-08-26T12:23:00Z,CO,5.53,ppm,5.13,500,6,Palo Alto,California Air Resources Board,CA_Palo_Alto_4756,CA_Palo_Alto_57114
+37.386,-122.084,2020-08-26T12:25:00Z,PM2.5,129.99,µg/m³,104.33,259,5,Mountain View,California Air Resources Board,CA_Mountain_View_9540,CA_Mountain_View_83947
+37.386,-122.084,2020-08-26T12:24:00Z,PM10,67.2,µg/m³,77.17,100,2,Mountain View,California Air Resources Board,CA_Mountain_View_8242,CA_Mountain_View_75090
+37.386,-122.084,2020-08-26T12:52:00Z,O3,0.06,ppm,0.05,5,1,Mountain View,California Air Resources Board,CA_Mountain_View_4161,CA_Mountain_View_54242
+37.386,-122.084,2020-08-26T12:51:00Z,NO2,0.0,ppm,0.0,0,1,Mountain View,California Air Resources Board,CA_Mountain_View_2597,CA_Mountain_View_92934
+37.386,-122.084,2020-08-26T12:15:00Z,SO2,0.02,ppm,0.03,2,1,Mountain View,California Air Resources Board,CA_Mountain_View_3308,CA_Mountain_View_90730
+37.386,-122.084,2020-08-26T12:36:00Z,CO,10.6,ppm,11.43,500,6,Mountain View,California Air Resources Board,CA_Mountain_View_2133,CA_Mountain_View_49291
+37.3688,-122.0363,2020-08-26T12:11:00Z,PM2.5,12.56,µg/m³,12.79,25,1,Sunnyvale,California Air Resources Board,CA_Sunnyvale_3868,CA_Sunnyvale_33204
+37.3688,-122.0363,2020-08-26T12:41:00Z,PM10,116.1,µg/m³,128.94,174,4,Sunnyvale,California Air Resources Board,CA_Sunnyvale_8581,CA_Sunnyvale_74812
+37.3688,-122.0363,2020-08-26T12:03:00Z,O3,0.01,ppm,0.01,1,1,Sunnyvale,California Air Resources Board,CA_Sunnyvale_6354,CA_Sunnyvale_89117
+37.3688,-122.0363,2020-08-26T12:07:00Z,NO2,0.03,ppm,0.02,2,1,Sunnyvale,California Air Resources Board,CA_Sunnyvale_8881,CA_Sunnyvale_52988
+37.3688,-122.0363,2020-08-26T12:57:00Z,SO2,0.01,ppm,0.01,1,1,Sunnyvale,California Air Resources Board,CA_Sunnyvale_3229,CA_Sunnyvale_18751
+37.3688,-122.0363,2020-08-26T12:46:00Z,CO,2.4,ppm,2.84,239,5,Sunnyvale,California Air Resources Board,CA_Sunnyvale_6120,CA_Sunnyvale_19014
+37.3541,-121.9552,2020-08-26T12:46:00Z,PM2.5,20.91,µg/m³,24.86,41,1,Santa Clara,California Air Resources Board,CA_Santa_Clara_2578,CA_Santa_Clara_17831
+37.3541,-121.9552,2020-08-26T12:57:00Z,PM10,119.28,µg/m³,120.32,178,4,Santa Clara,California Air Resources Board,CA_Santa_Clara_6313,CA_Santa_Clara_59163
+37.3541,-121.9552,2020-08-26T12:25:00Z,O3,0.07,ppm,0.07,6,1,Santa Clara,California Air Resources Board,CA_Santa_Clara_3935,CA_Santa_Clara_62126
+37.3541,-121.9552,2020-08-26T12:35:00Z,NO2,0.01,ppm,0.01,0,1,Santa Clara,California Air Resources Board,CA_Santa_Clara_3296,CA_Santa_Clara_32265
+37.3541,-121.9552,2020-08-26T12:57:00Z,SO2,0.02,ppm,0.02,1,1,Santa Clara,California Air Resources Board,CA_Santa_Clara_6309,CA_Santa_Clara_56869
+37.3541,-121.9552,2020-08-26T12:58:00Z,CO,2.79,ppm,2.8,278,5,Santa Clara,California Air Resources Board,CA_Santa_Clara_4477,CA_Santa_Clara_90590
+37.5483,-121.9886,2020-08-26T12:13:00Z,PM2.5,62.9,µg/m³,59.47,125,3,Fremont,California Air Resources Board,CA_Fremont_3655,CA_Fremont_16361
+37.5483,-121.9886,2020-08-26T12:24:00Z,PM10,91.25,µg/m³,94.66,136,3,Fremont,California Air Resources Board,CA_Fremont_1906,CA_Fremont_36963
+37.5483,-121.9886,2020-08-26T12:51:00Z,O3,0.04,ppm,0.03,3,1,Fremont,California Air Resources Board,CA_Fremont_8313,CA_Fremont_30766
+37.5483,-121.9886,2020-08-26T12:58:00Z,NO2,0.02,ppm,0.02,2,1,Fremont,California Air Resources Board,CA_Fremont_6658,CA_Fremont_15438
+37.5483,-121.9886,2020-08-26T12:54:00Z,SO2,0.03,ppm,0.04,3,1,Fremont,California Air Resources Board,CA_Fremont_6363,CA_Fremont_77700
+37.5483,-121.9886,2020-08-26T12:14:00Z,CO,8.13,ppm,7.59,500,6,Fremont,California Air Resources Board,CA_Fremont_1520,CA_Fremont_71382
+37.6688,-122.0808,2020-08-26T12:27:00Z,PM2.5,57.01,µg/m³,62.58,114,3,Hayward,California Air Resources Board,CA_Hayward_2952,CA_Hayward_53059
+37.6688,-122.0808,2020-08-26T12:13:00Z,PM10,35.18,µg/m³,37.92,52,2,Hayward,California Air Resources Board,CA_Hayward_2703,CA_Hayward_72941
+37.6688,-122.0808,2020-08-26T12:40:00Z,O3,0.01,ppm,0.0,0,1,Hayward,California Air Resources Board,CA_Hayward_2697,CA_Hayward_53716
+37.6688,-122.0808,2020-08-26T12:43:00Z,NO2,0.05,ppm,0.04,4,1,Hayward,California Air Resources Board,CA_Hayward_4391,CA_Hayward_58732
+37.6688,-122.0808,2020-08-26T12:27:00Z,SO2,0.01,ppm,0.01,0,1,Hayward,California Air Resources Board,CA_Hayward_5501,CA_Hayward_54130
+37.6688,-122.0808,2020-08-26T12:22:00Z,CO,1.75,ppm,2.08,174,4,Hayward,California Air Resources Board,CA_Hayward_9586,CA_Hayward_89274
+37.6819,-121.768,2020-08-26T12:35:00Z,PM2.5,77.99,µg/m³,69.96,155,4,Livermore,California Air Resources Board,CA_Livermore_5039,CA_Livermore_20698
+37.6819,-121.768,2020-08-26T12:02:00Z,PM10,117.82,µg/m³,127.81,176,4,Livermore,California Air Resources Board,CA_Livermore_7431,CA_Livermore_68184
+37.6819,-121.768,2020-08-26T12:29:00Z,O3,0.05,ppm,0.04,4,1,Livermore,California Air Resources Board,CA_Livermore_1603,CA_Livermore_12249
+37.6819,-121.768,2020-08-26T12:37:00Z,NO2,0.03,ppm,0.03,3,1,Livermore,California Air Resources Board,CA_Livermore_9934,CA_Livermore_70528
+37.6819,-121.768,2020-08-26T12:40:00Z,SO2,0.01,ppm,0.01,0,1,Livermore,California Air Resources Board,CA_Livermore_3288,CA_Livermore_41680
+37.6819,-121.768,2020-08-26T12:35:00Z,CO,3.5,ppm,4.0,350,6,Livermore,California Air Resources Board,CA_Livermore_2337,CA_Livermore_79598
+37.6624,-121.8747,2020-08-26T12:37:00Z,PM2.5,29.58,µg/m³,27.36,59,2,Pleasanton,California Air Resources Board,CA_Pleasanton_1899,CA_Pleasanton_69187
+37.6624,-121.8747,2020-08-26T12:34:00Z,PM10,2.24,µg/m³,1.81,3,1,Pleasanton,California Air Resources Board,CA_Pleasanton_8565,CA_Pleasanton_45948
+37.6624,-121.8747,2020-08-26T12:33:00Z,O3,0.04,ppm,0.04,4,1,Pleasanton,California Air Resources Board,CA_Pleasanton_1512,CA_Pleasanton_29929
+37.6624,-121.8747,2020-08-26T12:49:00Z,NO2,0.03,ppm,0.03,3,1,Pleasanton,California Air Resources Board,CA_Pleasanton_6989,CA_Pleasanton_71710
+37.6624,-121.8747,2020-08-26T12:41:00Z,SO2,0.02,ppm,0.02,2,1,Pleasanton,California Air Resources Board,CA_Pleasanton_7254,CA_Pleasanton_88073
+37.6624,-121.8747,2020-08-26T12:41:00Z,CO,20.6,ppm,21.54,500,6,Pleasanton,California Air Resources Board,CA_Pleasanton_8262,CA_Pleasanton_97893
+37.9101,-122.0652,2020-08-26T12:07:00Z,PM2.5,67.16,µg/m³,57.21,134,3,Walnut Creek,California Air Resources Board,CA_Walnut_Creek_5082,CA_Walnut_Creek_41995
+37.9101,-122.0652,2020-08-26T12:16:00Z,PM10,118.14,µg/m³,106.51,177,4,Walnut Creek,California Air Resources Board,CA_Walnut_Creek_7501,CA_Walnut_Creek_62149
+37.9101,-122.0652,2020-08-26T12:19:00Z,O3,0.03,ppm,0.02,2,1,Walnut Creek,California Air Resources Board,CA_Walnut_Creek_9450,CA_Walnut_Creek_47078
+37.9101,-122.0652,2020-08-26T12:22:00Z,NO2,0.03,ppm,0.02,2,1,Walnut Creek,California Air Resources Board,CA_Walnut_Creek_6894,CA_Walnut_Creek_73953
+37.9101,-122.0652,2020-08-26T12:44:00Z,SO2,0.0,ppm,0.0,0,1,Walnut Creek,California Air Resources Board,CA_Walnut_Creek_3149,CA_Walnut_Creek_38411
+37.9101,-122.0652,2020-08-26T12:04:00Z,CO,3.0,ppm,2.88,300,5,Walnut Creek,California Air Resources Board,CA_Walnut_Creek_9735,CA_Walnut_Creek_78424
+37.9775,-122.0311,2020-08-26T12:59:00Z,PM2.5,40.28,µg/m³,45.42,80,2,Concord,California Air Resources Board,CA_Concord_8726,CA_Concord_29311
+37.9775,-122.0311,2020-08-26T12:44:00Z,PM10,111.73,µg/m³,90.55,167,4,Concord,California Air Resources Board,CA_Concord_8493,CA_Concord_73114
+37.9775,-122.0311,2020-08-26T12:27:00Z,O3,0.01,ppm,0.01,1,1,Concord,California Air Resources Board,CA_Concord_9338,CA_Concord_43126
+37.9775,-122.0311,2020-08-26T12:34:00Z,NO2,0.05,ppm,0.06,5,1,Concord,California Air Resources Board,CA_Concord_7272,CA_Concord_72743
+37.9775,-122.0311,2020-08-26T12:22:00Z,SO2,0.02,ppm,0.02,1,1,Concord,California Air Resources Board,CA_Concord_5987,CA_Concord_27876
+37.9775,-122.0311,2020-08-26T12:45:00Z,CO,1.6,ppm,1.51,159,4,Concord,California Air Resources Board,CA_Concord_9315,CA_Concord_66453
+38.0049,-121.8058,2020-08-26T12:14:00Z,PM2.5,97.44,µg/m³,80.36,194,4,Antioch,California Air Resources Board,CA_Antioch_9929,CA_Antioch_69507
+38.0049,-121.8058,2020-08-26T12:58:00Z,PM10,231.8,µg/m³,269.17,347,6,Antioch,California Air Resources Board,CA_Antioch_5455,CA_Antioch_52685
+38.0049,-121.8058,2020-08-26T12:19:00Z,O3,0.0,ppm,0.0,0,1,Antioch,California Air Resources Board,CA_Antioch_4959,CA_Antioch_56558
+38.0049,-121.8058,2020-08-26T12:36:00Z,NO2,0.02,ppm,0.02,1,1,Antioch,California Air Resources Board,CA_Antioch_7010,CA_Antioch_96420
+38.0049,-121.8058,2020-08-26T12:53:00Z,SO2,0.02,ppm,0.02,1,1,Antioch,California Air Resources Board,CA_Antioch_3012,CA_Antioch_13842
+38.0049,-121.8058,2020-08-26T12:51:00Z,CO,18.26,ppm,17.75,500,6,Antioch,California Air Resources Board,CA_Antioch_2213,CA_Antioch_40473
+38.028,-121.8847,2020-08-26T12:08:00Z,PM2.5,61.91,µg/m³,56.74,123,3,Pittsburg,California Air Resources Board,CA_Pittsburg_8106,CA_Pittsburg_18253
+38.028,-121.8847,2020-08-26T12:10:00Z,PM10,254.35,µg/m³,270.5,381,6,Pittsburg,California Air Resources Board,CA_Pittsburg_3129,CA_Pittsburg_38778
+38.028,-121.8847,2020-08-26T12:54:00Z,O3,0.04,ppm,0.04,4,1,Pittsburg,California Air Resources Board,CA_Pittsburg_3542,CA_Pittsburg_88476
+38.028,-121.8847,2020-08-26T12:01:00Z,NO2,0.02,ppm,0.02,1,1,Pittsburg,California Air Resources Board,CA_Pittsburg_8867,CA_Pittsburg_31318
+38.028,-121.8847,2020-08-26T12:41:00Z,SO2,0.02,ppm,0.02,2,1,Pittsburg,California Air Resources Board,CA_Pittsburg_2063,CA_Pittsburg_90715
+38.028,-121.8847,2020-08-26T12:14:00Z,CO,3.61,ppm,3.07,360,6,Pittsburg,California Air Resources Board,CA_Pittsburg_7030,CA_Pittsburg_95423
+37.9319,-121.6958,2020-08-26T12:15:00Z,PM2.5,6.85,µg/m³,6.91,13,1,Brentwood,California Air Resources Board,CA_Brentwood_8079,CA_Brentwood_13262
+37.9319,-121.6958,2020-08-26T12:27:00Z,PM10,102.17,µg/m³,111.6,153,4,Brentwood,California Air Resources Board,CA_Brentwood_5169,CA_Brentwood_34909
+37.9319,-121.6958,2020-08-26T12:13:00Z,O3,0.09,ppm,0.08,9,1,Brentwood,California Air Resources Board,CA_Brentwood_4229,CA_Brentwood_65607
+37.9319,-121.6958,2020-08-26T12:57:00Z,NO2,0.03,ppm,0.03,3,1,Brentwood,California Air Resources Board,CA_Brentwood_2972,CA_Brentwood_73622
+37.9319,-121.6958,2020-08-26T12:33:00Z,SO2,0.01,ppm,0.01,0,1,Brentwood,California Air Resources Board,CA_Brentwood_3698,CA_Brentwood_33845
+37.9319,-121.6958,2020-08-26T12:00:00Z,CO,1.87,ppm,1.52,187,4,Brentwood,California Air Resources Board,CA_Brentwood_9723,CA_Brentwood_84441
+37.9974,-121.7124,2020-08-26T12:04:00Z,PM2.5,57.3,µg/m³,48.02,114,3,Oakley,California Air Resources Board,CA_Oakley_8231,CA_Oakley_77783
+37.9974,-121.7124,2020-08-26T12:18:00Z,PM10,162.96,µg/m³,143.35,244,5,Oakley,California Air Resources Board,CA_Oakley_7153,CA_Oakley_80059
+37.9974,-121.7124,2020-08-26T12:29:00Z,O3,0.04,ppm,0.04,3,1,Oakley,California Air Resources Board,CA_Oakley_3971,CA_Oakley_13824
+37.9974,-121.7124,2020-08-26T12:54:00Z,NO2,0.06,ppm,0.05,5,1,Oakley,California Air Resources Board,CA_Oakley_5794,CA_Oakley_40778
+37.9974,-121.7124,2020-08-26T12:50:00Z,SO2,0.01,ppm,0.01,0,1,Oakley,California Air Resources Board,CA_Oakley_5822,CA_Oakley_61834
+37.9974,-121.7124,2020-08-26T12:20:00Z,CO,2.7,ppm,3.17,270,5,Oakley,California Air Resources Board,CA_Oakley_7422,CA_Oakley_88906
+37.9085,-121.6002,2020-08-26T12:56:00Z,PM2.5,127.04,µg/m³,111.35,254,5,Discovery Bay,California Air Resources Board,CA_Discovery_Bay_8191,CA_Discovery_Bay_72619
+37.9085,-121.6002,2020-08-26T12:41:00Z,PM10,154.32,µg/m³,135.46,231,5,Discovery Bay,California Air Resources Board,CA_Discovery_Bay_7114,CA_Discovery_Bay_13725
+37.9085,-121.6002,2020-08-26T12:21:00Z,O3,0.04,ppm,0.03,3,1,Discovery Bay,California Air Resources Board,CA_Discovery_Bay_1680,CA_Discovery_Bay_62626
+37.9085,-121.6002,2020-08-26T12:28:00Z,NO2,0.05,ppm,0.05,5,1,Discovery Bay,California Air Resources Board,CA_Discovery_Bay_4676,CA_Discovery_Bay_52647
+37.9085,-121.6002,2020-08-26T12:53:00Z,SO2,0.04,ppm,0.04,4,1,Discovery Bay,California Air Resources Board,CA_Discovery_Bay_2706,CA_Discovery_Bay_93265
+37.9085,-121.6002,2020-08-26T12:16:00Z,CO,6.97,ppm,7.85,500,6,Discovery Bay,California Air Resources Board,CA_Discovery_Bay_4117,CA_Discovery_Bay_91046
+37.8671,-121.638,2020-08-26T12:06:00Z,PM2.5,60.73,µg/m³,64.93,121,3,Byron,California Air Resources Board,CA_Byron_8565,CA_Byron_63326
+37.8671,-121.638,2020-08-26T12:23:00Z,PM10,3.81,µg/m³,4.07,5,1,Byron,California Air Resources Board,CA_Byron_1482,CA_Byron_57657
+37.8671,-121.638,2020-08-26T12:28:00Z,O3,0.04,ppm,0.04,3,1,Byron,California Air Resources Board,CA_Byron_7211,CA_Byron_29082
+37.8671,-121.638,2020-08-26T12:23:00Z,NO2,0.01,ppm,0.01,1,1,Byron,California Air Resources Board,CA_Byron_3199,CA_Byron_57806
+37.8671,-121.638,2020-08-26T12:31:00Z,SO2,0.04,ppm,0.04,3,1,Byron,California Air Resources Board,CA_Byron_1070,CA_Byron_54936
+37.8671,-121.638,2020-08-26T12:56:00Z,CO,1.54,ppm,1.54,154,4,Byron,California Air Resources Board,CA_Byron_5196,CA_Byron_60112
