@@ -147,7 +147,7 @@ class WorkerServiceImpl final : public DataService::Service {
   void initializeRealData() {
     // Load real air quality data from Mini 2 data directory
     // Path is relative to the build directory
-    std::string dataPath = "../../mini1/data/2020-fire";
+    std::string dataPath = "../data/air_quality";
 
     try {
       std::cout << "Server C: Loading real air quality data from: " << dataPath << std::endl;
