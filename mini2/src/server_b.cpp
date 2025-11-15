@@ -54,7 +54,7 @@ class GreenTeamLeaderImpl final : public DataService::Service {
     }
   }
 
-  // NEW APPROACH: Just forward first chunk, store mapping
+  // Forwards the initial data request to Server C, stores a mapping between
   Status InitiateDataRequest(ServerContext* context, const Request* request,
                          DataChunk* reply) override {
     std::cout << "Server B (Green Leader): Received request for: " 
@@ -108,7 +108,7 @@ class GreenTeamLeaderImpl final : public DataService::Service {
     return Status::OK;
   }
 
-  // NEW APPROACH: Forward GetNextChunk to Server C using mapping
+  // Forward GetNextChunk request to Server C using the stored request ID mapping
   Status GetNextChunk(ServerContext* context, const ChunkRequest* request,
                      DataChunk* reply) override {
     std::string our_request_id = request->request_id();
@@ -203,8 +203,12 @@ class GreenTeamLeaderImpl final : public DataService::Service {
     
     ClientContext cancel_context;
     Ack cancel_ack;
-    worker_c_stub_->CancelRequest(&cancel_context, worker_cancel, &cancel_ack);
-    
+    Status cancel_status = worker_c_stub_->CancelRequest(&cancel_context, worker_cancel, &cancel_ack);
+    if (!cancel_status.ok()) {
+      std::cerr << "Server B: WARNING - Failed to cancel request on Server C: " << cancel_status.error_message() << std::endl;
+      std::cerr << "Server B: C's request ID was: " << worker_request_id << std::endl;
+    }
+
     reply->set_success(true);
     std::cout << "Server B: Cancel completed" << std::endl;
     
@@ -213,16 +217,17 @@ class GreenTeamLeaderImpl final : public DataService::Service {
 
  private:
   std::string generateRequestId() {
-    static int counter = 0;
+    static std::atomic<int> counter(0);
     return "req_b_green_" + std::to_string(++counter);
   }
 
   // Cleanup thread to remove expired mappings
   void cleanupExpiredMappings() {
     const auto EXPIRY_TIME = std::chrono::minutes(30);
+    const auto CLEANUP_INTERVAL = std::chrono::minutes(5);  
     
     while (running_) {
-      std::this_thread::sleep_for(std::chrono::minutes(5));
+      std::this_thread::sleep_for(CLEANUP_INTERVAL);
       
       auto now = std::chrono::steady_clock::now();
       std::lock_guard<std::mutex> lock(mappings_mutex_);
@@ -243,8 +248,8 @@ class GreenTeamLeaderImpl final : public DataService::Service {
   std::mutex mappings_mutex_;
   std::unordered_map<std::string, RequestMapping> request_mappings_;
   
-  std::thread cleanup_thread_;
   std::atomic<bool> running_;
+  std::thread cleanup_thread_;
 };
 
 void RunServerB() {
