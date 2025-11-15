@@ -47,8 +47,16 @@ else()
     set(USE_OPENMP FALSE)
 endif()
 
+# Find gRPC and Protobuf
 find_package(gRPC REQUIRED)
 find_package(Protobuf REQUIRED)
+
+# Find protoc compiler and grpc plugin
+find_program(_PROTOBUF_PROTOC protoc REQUIRED)
+find_program(_GRPC_CPP_PLUGIN_EXECUTABLE grpc_cpp_plugin REQUIRED)
+
+message(STATUS "Found protoc: ${_PROTOBUF_PROTOC}")
+message(STATUS "Found grpc_cpp_plugin: ${_GRPC_CPP_PLUGIN_EXECUTABLE}")
 
 include_directories(${gRPC_INCLUDE_DIRS})
 include_directories(${Protobuf_INCLUDE_DIRS})
@@ -71,11 +79,11 @@ add_custom_command(
         ${GENERATED_DIR}/dataserver.grpc.pb.h
         ${GENERATED_DIR}/dataserver.grpc.pb.cc
     COMMAND
-        ${gRPC_PROTOC_EXECUTABLE}
+        ${_PROTOBUF_PROTOC}
         --proto_path=${CMAKE_CURRENT_SOURCE_DIR}/protos
         --cpp_out=${GENERATED_DIR}
         --grpc_out=${GENERATED_DIR}
-        --plugin=protoc-gen-grpc=${gRPC_CPP_PLUGIN_EXECUTABLE}
+        --plugin=protoc-gen-grpc=${_GRPC_CPP_PLUGIN_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/protos/dataserver.proto
     DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/protos/dataserver.proto
@@ -95,27 +103,27 @@ add_custom_target(generate_protos DEPENDS
     ${GENERATED_DIR}/dataserver.grpc.pb.h
 )
 
-target_link_libraries(protos_lib PUBLIC gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(protos_lib PUBLIC gRPC::grpc++ protobuf::libprotobuf)
 
 # Executables
 add_executable(server_a src/server_a.cpp)
-target_link_libraries(server_a protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_a protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(server_b src/server_b.cpp)
-target_link_libraries(server_b protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_b protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(server_c src/server_c.cpp src/AirQualityDataManager.cpp utils/CSVParser.cpp)
-target_link_libraries(server_c protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_c protos_lib gRPC::grpc++ protobuf::libprotobuf)
 if(USE_OPENMP)
     target_link_libraries(server_c OpenMP::OpenMP_CXX)
     target_compile_definitions(server_c PRIVATE USE_OPENMP)
 endif()
 
 add_executable(server_d src/server_d.cpp)
-target_link_libraries(server_d protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_d protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(server_e src/server_e.cpp)
-target_link_libraries(server_e protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(server_e protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
 add_executable(client src/client.cpp)
-target_link_libraries(client protos_lib gRPC::grpc++ gRPC::grpc protobuf::libprotobuf)
+target_link_libraries(client protos_lib gRPC::grpc++ protobuf::libprotobuf)
