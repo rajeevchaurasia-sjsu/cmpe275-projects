@@ -1,5 +1,21 @@
 # ignore all DS_Store files in any directory or root level
 **/.DS_Store
 .DS_Store
+
 # ignore vscode directory
 .vscode/
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python generated files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Python generated gRPC code (regenerate from proto)
+python_generated/
