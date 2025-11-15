@@ -4,7 +4,9 @@
 #include <grpcpp/grpcpp.h>
 #include <mutex>
 #include <unordered_map>
-#include <vector>
+#include <chrono>
+#include <thread>
+#include <atomic>
 #include "dataserver.grpc.pb.h"
 #include "dataserver.pb.h"
 
@@ -20,9 +22,13 @@ using mini2::ChunkRequest;
 using mini2::CancelRequestMessage;
 using mini2::Ack;
 
-// Server B - Green Team Leader
-// TODO: Implement coordination with C, handle Green team requests
+// Structure to track request mapping to Server C
+struct RequestMapping {
+  std::string worker_c_request_id;  // Server C's request ID
+  std::chrono::steady_clock::time_point last_access;
+};
 
+// Server B - Green Team Leader (Streaming/Pass-Through)
 class GreenTeamLeaderImpl final : public DataService::Service {
  public:
   GreenTeamLeaderImpl() {
@@ -34,18 +40,31 @@ class GreenTeamLeaderImpl final : public DataService::Service {
         grpc::CreateChannel(worker_c_address, grpc::InsecureChannelCredentials())
     );
 
-    std::cout << "Server B: Connection stub created. Connected to worker C at " << worker_c_address << std::endl;
+    std::cout << "Server B: Connected to worker C at " << worker_c_address << std::endl;
+
+    // Start cleanup thread for expired mappings
+    running_ = true;
+    cleanup_thread_ = std::thread(&GreenTeamLeaderImpl::cleanupExpiredMappings, this);
   }
 
+  ~GreenTeamLeaderImpl() {
+    running_ = false;
+    if (cleanup_thread_.joinable()) {
+      cleanup_thread_.join();
+    }
+  }
+
+  // NEW APPROACH: Just forward first chunk, store mapping
   Status InitiateDataRequest(ServerContext* context, const Request* request,
                          DataChunk* reply) override {
     std::cout << "Server B (Green Leader): Received request for: " 
               << request->name() << std::endl;
 
-    std::string request_id = generateRequestId();
-    std::cout << "Server B: Generated request ID: " << request_id << std::endl;
+    // Generate our own request ID for tracking
+    std::string our_request_id = generateRequestId();
+    std::cout << "Server B: Generated request ID: " << our_request_id << std::endl;
 
-    // Step 1: Get first chunk from worker C
+    // Forward request to Worker C
     ClientContext worker_context;
     DataChunk worker_response;
     
@@ -56,97 +75,97 @@ class GreenTeamLeaderImpl final : public DataService::Service {
       std::cerr << "Server B: ERROR - Worker C failed: " 
                 << status.error_message() << std::endl;
       
-      reply->set_request_id(request_id);
+      reply->set_request_id(our_request_id);
       reply->set_has_more_chunks(false);
       
       return Status(grpc::INTERNAL, "Failed to retrieve data from worker C");
     }
 
-    // Step 2: Collect ALL chunks from C if chunked
-    std::vector<mini2::AirQualityData> all_data;
-    
-    // Add first chunk data
-    for (const auto& data : worker_response.data()) {
-      all_data.push_back(data);
-    }
-    
-    std::cout << "Server B: Got first chunk with " 
-              << worker_response.data_size() << " items" << std::endl;
-
-    // Step 3: Fetch remaining chunks if any
+    // Store mapping: our_request_id → C's request_id
     std::string worker_request_id = worker_response.request_id();
-    while (worker_response.has_more_chunks()) {
-      ChunkRequest chunk_req;
-      chunk_req.set_request_id(worker_request_id);
-      
-      ClientContext chunk_context;
-      DataChunk next_chunk;
-      
-      Status chunk_status = worker_c_stub_->GetNextChunk(&chunk_context, chunk_req, &next_chunk);
-      
-      if (chunk_status.ok()) {
-        std::cout << "Server B: Got next chunk with " 
-                  << next_chunk.data_size() << " items" << std::endl;
-        
-        for (const auto& data : next_chunk.data()) {
-          all_data.push_back(data);
-        }
-        
-        worker_response.set_has_more_chunks(next_chunk.has_more_chunks());
-      } else {
-        std::cerr << "Server B: Warning - Failed to get chunk: " 
-                  << chunk_status.error_message() << std::endl;
-        break;
-      }
-    }
-
-    std::cout << "Server B: Collected total of " << all_data.size() 
-              << " items from worker C" << std::endl;
-
-    // Step 4: Create our own response with ALL data
-    DataChunk combined_chunk;
-    combined_chunk.set_request_id(request_id);
-    combined_chunk.set_has_more_chunks(false);  // We don't re-chunk
-    
-    for (const auto& data : all_data) {
-      auto* data_item = combined_chunk.add_data();
-      data_item->CopyFrom(data);
-    }
-
-    // Step 5: Store and return
     {
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      active_requests_[request_id] = combined_chunk;
+      std::lock_guard<std::mutex> lock(mappings_mutex_);
+      request_mappings_[our_request_id] = {
+          worker_request_id,
+          std::chrono::steady_clock::now()
+      };
     }
 
-    reply->CopyFrom(combined_chunk);
-    std::cout << "Server B: Returning " << reply->data_size() 
+    std::cout << "Server B: Mapped request [" << our_request_id 
+              << "] -> C's [" << worker_request_id << "]" << std::endl;
+    std::cout << "Server B: Got first chunk with " 
+              << worker_response.data_size() << " items from C" << std::endl;
+
+    // Return first chunk to Server A with OUR request ID
+    reply->CopyFrom(worker_response);
+    reply->set_request_id(our_request_id);  // Replace C's ID with ours
+
+    std::cout << "Server B: Returning first chunk with " << reply->data_size() 
               << " items to Server A" << std::endl;
+    std::cout << "Server B: Has more chunks: " 
+              << (reply->has_more_chunks() ? "Yes" : "No") << std::endl;
 
     return Status::OK;
   }
 
+  // NEW APPROACH: Forward GetNextChunk to Server C using mapping
   Status GetNextChunk(ServerContext* context, const ChunkRequest* request,
                      DataChunk* reply) override {
-    std::cout << "Server B: Get next chunk for request ID: " 
-              << request->request_id() << std::endl;
+    std::string our_request_id = request->request_id();
+    std::cout << "Server B: Get next chunk for request ID: " << our_request_id << std::endl;
 
-    // Look up the original request in our cache
-    std::lock_guard<std::mutex> lock(requests_mutex_);
-    auto it = active_requests_.find(request->request_id());
-    
-    if (it != active_requests_.end()) {
-      // Found it! Return the cached data
-      reply->CopyFrom(it->second);
-      reply->set_has_more_chunks(false);  // For now, no more chunks
+    // Look up C's request ID from our mapping
+    std::string worker_request_id;
+    {
+      std::lock_guard<std::mutex> lock(mappings_mutex_);
+      auto it = request_mappings_.find(our_request_id);
       
-      std::cout << "Server B: Returned chunk with " 
-                << reply->data_size() << " items" << std::endl;
-    } else {
-      // Request ID not found - maybe it was cancelled?
-      std::cerr << "Server B: ERROR - Request ID not found: " 
-                << request->request_id() << std::endl;
-      return Status(grpc::NOT_FOUND, "Request ID not found");
+      if (it == request_mappings_.end()) {
+        std::cerr << "Server B: ERROR - Request ID not found: " 
+                  << our_request_id << std::endl;
+        return Status(grpc::NOT_FOUND, "Request ID not found or expired");
+      }
+      
+      worker_request_id = it->second.worker_c_request_id;
+      // Update last access time
+      it->second.last_access = std::chrono::steady_clock::now();
+    }
+
+    std::cout << "Server B: Forwarding to C's request ID: " << worker_request_id << std::endl;
+
+    // Forward GetNextChunk to Server C
+    ChunkRequest worker_chunk_req;
+    worker_chunk_req.set_request_id(worker_request_id);
+    
+    ClientContext worker_context;
+    DataChunk worker_response;
+    
+    Status status = worker_c_stub_->GetNextChunk(&worker_context, worker_chunk_req, &worker_response);
+    
+    if (!status.ok()) {
+      std::cerr << "Server B: ERROR - Failed to get chunk from C: " 
+                << status.error_message() << std::endl;
+      return status;
+    }
+
+    std::cout << "Server B: Got chunk with " << worker_response.data_size() 
+              << " items from C" << std::endl;
+
+    // Return C's chunk to A (keeping our request ID)
+    reply->CopyFrom(worker_response);
+    reply->set_request_id(our_request_id);  // Replace C's ID with ours
+
+    std::cout << "Server B: Forwarding chunk with " << reply->data_size() 
+              << " items to Server A" << std::endl;
+    std::cout << "Server B: Has more chunks: " 
+              << (reply->has_more_chunks() ? "Yes" : "No") << std::endl;
+
+    // Clean up mapping if no more chunks
+    if (!reply->has_more_chunks()) {
+      std::lock_guard<std::mutex> lock(mappings_mutex_);
+      request_mappings_.erase(our_request_id);
+      std::cout << "Server B: Request completed, removed mapping for: " 
+                << our_request_id << std::endl;
     }
 
     return Status::OK;
@@ -154,33 +173,78 @@ class GreenTeamLeaderImpl final : public DataService::Service {
 
   Status CancelRequest(ServerContext* context, const CancelRequestMessage* request,
                     Ack* reply) override {
-    std::cout << "Server B: Cancel request ID: " << request->request_id() << std::endl;
+    std::string our_request_id = request->request_id();
+    std::cout << "Server B: Cancel request ID: " << our_request_id << std::endl;
     
-    // Remove from cache
+    // Look up C's request ID
+    std::string worker_request_id;
     {
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      active_requests_.erase(request->request_id());
+      std::lock_guard<std::mutex> lock(mappings_mutex_);
+      auto it = request_mappings_.find(our_request_id);
+      
+      if (it != request_mappings_.end()) {
+        worker_request_id = it->second.worker_c_request_id;
+        request_mappings_.erase(it);
+        std::cout << "Server B: Removed mapping for: " << our_request_id << std::endl;
+      } else {
+        std::cout << "Server B: Request ID not found (already expired?): " 
+                  << our_request_id << std::endl;
+        reply->set_success(true);
+        return Status::OK;
+      }
     }
     
-    // Tell Server C to cancel too
+    // Forward cancel to Server C
+    std::cout << "Server B: Forwarding cancel to C's request ID: " 
+              << worker_request_id << std::endl;
+    
+    CancelRequestMessage worker_cancel;
+    worker_cancel.set_request_id(worker_request_id);
+    
     ClientContext cancel_context;
     Ack cancel_ack;
-    worker_c_stub_->CancelRequest(&cancel_context, *request, &cancel_ack);
+    worker_c_stub_->CancelRequest(&cancel_context, worker_cancel, &cancel_ack);
     
     reply->set_success(true);
+    std::cout << "Server B: Cancel completed" << std::endl;
+    
     return Status::OK;
   }
 
  private:
-
   std::string generateRequestId() {
     static int counter = 0;
     return "req_b_green_" + std::to_string(++counter);
   }
 
+  // Cleanup thread to remove expired mappings
+  void cleanupExpiredMappings() {
+    const auto EXPIRY_TIME = std::chrono::minutes(30);
+    
+    while (running_) {
+      std::this_thread::sleep_for(std::chrono::minutes(5));
+      
+      auto now = std::chrono::steady_clock::now();
+      std::lock_guard<std::mutex> lock(mappings_mutex_);
+      
+      for (auto it = request_mappings_.begin(); it != request_mappings_.end(); ) {
+        if (now - it->second.last_access > EXPIRY_TIME) {
+          std::cout << "Server B: Cleaning up expired mapping: " 
+                    << it->first << std::endl;
+          it = request_mappings_.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
+  }
+
   std::unique_ptr<DataService::Stub> worker_c_stub_;
-  std::mutex requests_mutex_;
-  std::unordered_map<std::string, DataChunk> active_requests_;
+  std::mutex mappings_mutex_;
+  std::unordered_map<std::string, RequestMapping> request_mappings_;
+  
+  std::thread cleanup_thread_;
+  std::atomic<bool> running_;
 };
 
 void RunServerB() {
@@ -188,22 +252,17 @@ void RunServerB() {
   GreenTeamLeaderImpl service;
 
   ServerBuilder builder;
-  
-  // Bind to port 50052
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  
-  // Register our service implementation
   builder.RegisterService(&service);
 
-  // Build and start the server
   std::unique_ptr<Server> server(builder.BuildAndStart());
   
   std::cout << "========================================" << std::endl;
   std::cout << "Server B (Green Team Leader) listening on " << server_address << std::endl;
   std::cout << "Managing Green team: B (self), C (worker)" << std::endl;
+  std::cout << "Mode: STREAMING (pass-through chunking)" << std::endl;
   std::cout << "========================================" << std::endl;
 
-  // Wait for shutdown signal (Ctrl+C)
   server->Wait();
 }
 
