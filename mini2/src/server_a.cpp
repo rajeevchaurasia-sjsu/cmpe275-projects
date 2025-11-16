@@ -6,6 +6,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 #include "dataserver.grpc.pb.h"
 #include "dataserver.pb.h"
 
@@ -39,13 +40,11 @@ class LeaderServiceImpl final : public DataService::Service {
     // B: Green team leader, D: Pink team leader
     team_b_stub_ = DataService::NewStub(
         grpc::CreateChannel("localhost:50052", grpc::InsecureChannelCredentials()));
-    // COMMENT OUT PINK TEAM (D) - NOT IMPLEMENTED YET
-    /*
+
     std::cout << "Server A: Connecting to Team D (Pink) at localhost:50054" << std::endl;
     team_d_stub_ = DataService::NewStub(
         grpc::CreateChannel("localhost:50054", grpc::InsecureChannelCredentials()));
     std::cout << "Server A: Connected to Team D (Pink): localhost:50054" << std::endl;
-    */
 
     // Start cleanup thread for expired requests
     cleanup_thread_ = std::thread(&LeaderServiceImpl::cleanupExpiredRequests, this);
@@ -77,14 +76,11 @@ class LeaderServiceImpl final : public DataService::Service {
       team_results.push_back(data);
     });
 
-    // COMMENT OUT PINK TEAM QUERY
-    /*
     team_threads.emplace_back([&, request]() {
       std::vector<mini2::AirQualityData> data = queryTeam("pink", request);
       std::lock_guard<std::mutex> lock(results_mutex);
       team_results.push_back(data);
     });
-    */
 
     // Wait for all team responses
     for (auto& thread : team_threads) {
@@ -192,15 +188,10 @@ class LeaderServiceImpl final : public DataService::Service {
       if (team == "green") {
         std::cout << "Server A: Querying team " << team << "..." << std::endl;
         status = team_b_stub_->InitiateDataRequest(&context, *request, &response);
-      } 
-      // COMMENT OUT PINK TEAM QUERY
-      /*
-      else if (team == "pink") {
+      } else if (team == "pink") {
         std::cout << "Server A: Querying team " << team << "..." << std::endl;
         status = team_d_stub_->InitiateDataRequest(&context, *request, &response);
-      }
-      */
-      else {
+      } else {
         std::cout << "Server A: Unknown team: " << team << std::endl;
         return result;
       }
@@ -221,14 +212,9 @@ class LeaderServiceImpl final : public DataService::Service {
           Status chunk_status;
           if (team == "green") {
             chunk_status = team_b_stub_->GetNextChunk(&chunk_context, chunk_req, &next_chunk);
-          } 
-          // COMMENT OUT PINK CHUNK FETCHING
-          /*
-          else {
+          } else if (team == "pink") {
             chunk_status = team_d_stub_->GetNextChunk(&chunk_context, chunk_req, &next_chunk);
-          }
-          */
-          else {
+          } else {
             break;
           }
 
@@ -275,8 +261,7 @@ class LeaderServiceImpl final : public DataService::Service {
   }
 
   std::unique_ptr<DataService::Stub> team_b_stub_;  // Green team leader
-  // COMMENT OUT PINK TEAM STUB
-  // std::unique_ptr<DataService::Stub> team_d_stub_;  // Pink team leader
+  std::unique_ptr<DataService::Stub> team_d_stub_;  // Pink team leader
 
   std::mutex requests_mutex_;
   std::unordered_map<std::string, ChunkedRequest> chunked_requests_;
@@ -298,8 +283,7 @@ void RunServer() {
   std::cout << "========================================" << std::endl;
   std::cout << "Server A (Leader) listening on " << server_address << std::endl;
   std::cout << "Connected to Team B (Green): localhost:50052" << std::endl;
-  // COMMENT OUT PINK TEAM LOG
-  // std::cout << "Connected to Team D (Pink): localhost:50054" << std::endl;
+  std::cout << "Connected to Team D (Pink): localhost:50054" << std::endl;
   std::cout << "Testing with GREEN TEAM ONLY (B, C)" << std::endl;
   std::cout << "Chunking enabled - 10 items per chunk" << std::endl;
   std::cout << "========================================" << std::endl;

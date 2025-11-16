@@ -8,7 +8,7 @@ import csv
 import glob
 
 # Add the protos directory to the path so we can import the generated modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../protos'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python_generated'))
 
 # Note: User must generate these using grpc_tools.protoc
 # python -m grpc_tools.protoc -I../protos --python_out=. --grpc_python_out=. ../protos/dataserver.proto
