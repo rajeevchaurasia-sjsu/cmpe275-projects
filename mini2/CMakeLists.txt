@@ -47,6 +47,18 @@ else()
     set(USE_OPENMP FALSE)
 endif()
 
+# Help CMake find Homebrew packages on macOS
+if(APPLE)
+    execute_process(COMMAND brew --prefix grpc
+                    OUTPUT_VARIABLE GRPC_PREFIX
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND brew --prefix protobuf
+                    OUTPUT_VARIABLE PROTOBUF_PREFIX
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    list(APPEND CMAKE_PREFIX_PATH "${GRPC_PREFIX}" "${PROTOBUF_PREFIX}")
+    message(STATUS "Added Homebrew paths: ${GRPC_PREFIX}, ${PROTOBUF_PREFIX}")
+endif()
+
 # Find gRPC and Protobuf
 find_package(gRPC REQUIRED)
 find_package(Protobuf REQUIRED)
@@ -122,8 +134,12 @@ endif()
 add_executable(server_d src/server_d.cpp)
 target_link_libraries(server_d protos_lib gRPC::grpc++ protobuf::libprotobuf)
 
-add_executable(server_e src/server_e.cpp)
+add_executable(server_e src/server_e.cpp src/AirQualityDataManager.cpp utils/CSVParser.cpp)
 target_link_libraries(server_e protos_lib gRPC::grpc++ protobuf::libprotobuf)
+if(USE_OPENMP)
+    target_link_libraries(server_e OpenMP::OpenMP_CXX)
+    target_compile_definitions(server_e PRIVATE USE_OPENMP)
+endif()
 
 add_executable(client src/client.cpp)
 target_link_libraries(client protos_lib gRPC::grpc++ protobuf::libprotobuf)
