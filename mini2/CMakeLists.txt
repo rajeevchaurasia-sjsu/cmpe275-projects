@@ -131,9 +131,6 @@ if(USE_OPENMP)
     target_compile_definitions(server_c PRIVATE USE_OPENMP)
 endif()
 
-add_executable(server_d src/server_d.cpp)
-target_link_libraries(server_d protos_lib gRPC::grpc++ protobuf::libprotobuf)
-
 add_executable(server_e src/server_e.cpp src/AirQualityDataManager.cpp utils/CSVParser.cpp)
 target_link_libraries(server_e protos_lib gRPC::grpc++ protobuf::libprotobuf)
 if(USE_OPENMP)
