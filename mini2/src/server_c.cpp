@@ -12,6 +12,8 @@
 #include "dataserver.grpc.pb.h"
 #include "dataserver.pb.h"
 #include "../include/AirQualityDataManager.hpp"
+#include "../include/CommonUtils.hpp"
+#include "../include/SessionManager.hpp"
 #include "../utils/CSVParser.hpp"
 
 using grpc::Server;
@@ -26,15 +28,6 @@ using mini2::CancelRequestMessage;
 using mini2::Ack;
 using mini2::AirQualityData;
 
-// Structure to track chunked request state
-struct ChunkedRequest {
-  std::deque<DataChunk> chunks;
-  int current_chunk_index = 0;
-  std::chrono::steady_clock::time_point last_access;
-
-  ChunkedRequest() : last_access(std::chrono::steady_clock::now()) {}
-};
-
 // Server C - Green Team Worker
 // Processes data requests for the Green team with chunking support
 class WorkerServiceImpl final : public DataService::Service {
@@ -43,102 +36,32 @@ class WorkerServiceImpl final : public DataService::Service {
     // Initialize real air quality data from Mini 1
     initializeRealData();
 
-    // Start cleanup thread for expired requests
-    cleanup_thread_ = std::thread(&WorkerServiceImpl::cleanupExpiredRequests, this);
-  }
-
-  ~WorkerServiceImpl() {
-    running_ = false;
-    if (cleanup_thread_.joinable()) {
-      cleanup_thread_.join();
-    }
+    // Initialize session manager for chunking (5 items per chunk)
+    session_manager_ = std::make_unique<SessionManager>(5);
   }
 
   Status InitiateDataRequest(ServerContext* context, const Request* request,
                            DataChunk* reply) override {
     std::cout << "Server C (Green Worker): Processing request for: " << request->name() << std::endl;
 
-    // Generate request ID
-    std::string request_id = "req_c_" + std::to_string(request_counter_++);
-
     // Get data for this request (Green team data)
     auto all_data = getGreenTeamData(request->name());
 
-    // Create chunks (e.g., 5 items per chunk for demonstration)
-    const int CHUNK_SIZE = 5;
-    std::deque<DataChunk> chunks;
-
-    for (size_t i = 0; i < all_data.size(); i += CHUNK_SIZE) {
-      DataChunk chunk;
-      chunk.set_request_id(request_id);
-      size_t end = std::min(i + CHUNK_SIZE, all_data.size());
-      for (size_t j = i; j < end; ++j) {
-        auto* data_item = chunk.add_data();
-        data_item->CopyFrom(all_data[j]);
-      }
-      chunk.set_has_more_chunks((end < all_data.size()));
-      chunks.push_back(chunk);
-    }
-
-    // If no data, create empty chunk
-    if (chunks.empty()) {
-      DataChunk empty_chunk;
-      empty_chunk.set_request_id(request_id);
-      empty_chunk.set_has_more_chunks(false);
-      chunks.push_back(empty_chunk);
-    }
-
-    // Store chunked request state
-    {
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      ChunkedRequest req_state;
-      req_state.chunks = chunks;
-      req_state.current_chunk_index = 0;
-      chunked_requests_[request_id] = req_state;
-    }
-
-    // Return first chunk
-    reply->CopyFrom(chunks.front());
-
-    std::cout << "Server C: Created " << chunks.size() << " chunks with "
-              << all_data.size() << " total data items" << std::endl;
-
-    return Status::OK;
+    // Create session and get first chunk
+    std::string session_id = session_manager_->createSession(all_data);
+    return session_manager_->getNextChunk(session_id, reply);
   }
 
   Status GetNextChunk(ServerContext* context, const ChunkRequest* request,
                      DataChunk* reply) override {
     std::cout << "Server C: Get next chunk for: " << request->request_id() << std::endl;
-
-    std::lock_guard<std::mutex> lock(requests_mutex_);
-    auto it = chunked_requests_.find(request->request_id());
-    if (it == chunked_requests_.end()) {
-      return Status(grpc::NOT_FOUND, "Request ID not found");
-    }
-
-    ChunkedRequest& req_state = it->second;
-    req_state.last_access = std::chrono::steady_clock::now();
-
-    if (req_state.current_chunk_index + 1 >= static_cast<int>(req_state.chunks.size())) {
-      return Status(grpc::OUT_OF_RANGE, "No more chunks available");
-    }
-
-    req_state.current_chunk_index++;
-    reply->CopyFrom(req_state.chunks[req_state.current_chunk_index]);
-
-    std::cout << "Server C: Returning chunk " << req_state.current_chunk_index
-              << " of " << req_state.chunks.size() << std::endl;
-
-    return Status::OK;
+    return session_manager_->getNextChunk(request->request_id(), reply);
   }
 
   Status CancelRequest(ServerContext* context, const CancelRequestMessage* request,
                       Ack* reply) override {
     std::cout << "Server C: Cancel request: " << request->request_id() << std::endl;
-
-    std::lock_guard<std::mutex> lock(requests_mutex_);
-    chunked_requests_.erase(request->request_id());
-
+    session_manager_->cancelSession(request->request_id());
     reply->set_success(true);
     return Status::OK;
   }
@@ -146,53 +69,36 @@ class WorkerServiceImpl final : public DataService::Service {
  private:
   void initializeRealData() {
     // Load real air quality data from Mini 2 data directory
-    // Path is relative to the build directory
-    std::string dataPath = "../data/air_quality";
+    // Server C serves GREEN TEAM data: August 2020 only (20200801-20200831)
+    std::string data_root = "../data/air_quality";
 
-    try {
-      std::cout << "Server C: Loading real air quality data from: " << dataPath << std::endl;
-      dataManager_.loadFromDirectoryParallel(dataPath, 4);  // Use parallel loading with 4 threads
+    std::cout << "Server C: Loading GREEN TEAM data from August 2020 (20200801-20200831)..." << std::endl;
 
-      int totalReadings = dataManager_.getReadingCount();
-      std::cout << "Server C: Loaded " << totalReadings << " air quality readings" << std::endl;
+    // Load specific date folders for Server C (all days of August)
+    for (int day = 1; day <= 31; day++) {
+      std::stringstream folder_name;
+      folder_name << "202008" << std::setfill('0') << std::setw(2) << day;
+      std::string folder_path = data_root + "/" + folder_name.str();
 
-      // Convert to protobuf format and store
-      auto allReadings = dataManager_.getAllReadings();
-      for (const auto& reading : allReadings) {
-        mini2::AirQualityData data;
-        data.set_datetime(reading.getDatetime());
-        data.set_timezone("UTC");  // Assuming UTC timezone
-        data.set_location(reading.getSiteName());
-        data.set_latitude(reading.getLatitude());
-        data.set_longitude(reading.getLongitude());
-        data.set_aqi_parameter(reading.getPollutantType());
-        data.set_aqi_value(reading.getValue());
-        data.set_aqi_unit(reading.getUnit());
-
-        // Convert AQI category to string
-        std::string category;
-        switch (reading.getCategory()) {
-          case 1: category = "Good"; break;
-          case 2: category = "Moderate"; break;
-          case 3: category = "Unhealthy for Sensitive Groups"; break;
-          case 4: category = "Unhealthy"; break;
-          case 5: category = "Very Unhealthy"; break;
-          case 6: category = "Hazardous"; break;
-          default: category = "Unknown"; break;
-        }
-        data.set_aqi_category(category);
-
-        green_team_data_["real"].push_back(data);
+      // Check if folder exists and load it
+      if (std::filesystem::exists(folder_path)) {
+        dataManager_.loadFromDateFolder(folder_path);
+      } else {
+        std::cerr << "Server C: Warning: Folder not found: " << folder_path << std::endl;
       }
-
-      std::cout << "Server C: Converted " << green_team_data_["real"].size()
-                << " readings to protobuf format" << std::endl;
-
-    } catch (const std::exception& e) {
-      std::cerr << "Server C: Error loading real data: " << e.what() << std::endl;
-      std::cerr << "Server C: Falling back to sample data" << std::endl;
-      initializeSampleData();
     }
+
+    int totalReadings = dataManager_.getReadingCount();
+    std::cout << "Server C: Loaded " << totalReadings << " air quality readings from August 2020" << std::endl;
+
+    // Convert to protobuf format and store
+    auto allReadings = dataManager_.getAllReadings();
+    for (const auto& reading : allReadings) {
+      green_team_data_["real"].push_back(CommonUtils::convertToProtobuf(reading));
+    }
+
+    std::cout << "Server C: Converted " << green_team_data_["real"].size()
+              << " readings to protobuf format" << std::endl;
   }
 
   void initializeSampleData() {
@@ -232,34 +138,9 @@ class WorkerServiceImpl final : public DataService::Service {
     return {};
   }
 
-  void cleanupExpiredRequests() {
-    while (running_) {
-      std::this_thread::sleep_for(std::chrono::minutes(5)); // Cleanup every 5 minutes
-
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      auto now = std::chrono::steady_clock::now();
-      auto timeout = std::chrono::minutes(30); // 30 minute timeout
-
-      for (auto it = chunked_requests_.begin(); it != chunked_requests_.end(); ) {
-        if (now - it->second.last_access > timeout) {
-          it = chunked_requests_.erase(it);
-        } else {
-          ++it;
-        }
-      }
-    }
-  }
-
   std::unordered_map<std::string, std::vector<mini2::AirQualityData>> green_team_data_;
-  int request_counter_ = 0;
-
-  std::mutex requests_mutex_;
-  std::unordered_map<std::string, ChunkedRequest> chunked_requests_;
-
-  std::thread cleanup_thread_;
-  std::atomic<bool> running_{true};
-
-  AirQualityDataManager dataManager_;  // Mini 1 data manager
+  std::unique_ptr<SessionManager> session_manager_;
+  AirQualityDataManager dataManager_;
 };
 
 void RunServer() {

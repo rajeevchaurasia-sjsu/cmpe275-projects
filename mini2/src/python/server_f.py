@@ -1,17 +1,17 @@
 import grpc
 from concurrent import futures
 import time
-import uuid
 import os
 import sys
 import csv
 import glob
 
 # Add the protos directory to the path so we can import the generated modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python_generated'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'python_generated'))
 
-# Note: User must generate these using grpc_tools.protoc
-# python -m grpc_tools.protoc -I../protos --python_out=. --grpc_python_out=. ../protos/dataserver.proto
+# Import common utilities
+from common_utils import CommonUtils, SessionManager
+
 try:
     import dataserver_pb2
     import dataserver_pb2_grpc
@@ -26,7 +26,7 @@ CHUNK_SIZE = 5
 class DataServiceServicer(dataserver_pb2_grpc.DataServiceServicer):
     def __init__(self):
         self.data_store = []
-        self.sessions = {}
+        self.session_manager = SessionManager()
         self.load_dummy_data()
         print(f"[Server F] Initialized with {len(self.data_store)} records.")
 
@@ -37,7 +37,7 @@ class DataServiceServicer(dataserver_pb2_grpc.DataServiceServicer):
         """
         # Get path to data directory
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        data_dir = os.path.join(script_dir, '../data/air_quality')
+        data_dir = os.path.join(script_dir, '../../data/air_quality')
         
         if not os.path.exists(data_dir):
             print(f"[Server F] Warning: Data directory not found at {data_dir}")
@@ -93,7 +93,7 @@ class DataServiceServicer(dataserver_pb2_grpc.DataServiceServicer):
                                 self.data_store.append(record)
                                 records_loaded += 1
                             except (ValueError, IndexError) as e:
-                                continue  # Skip malformed rows
+                                continue
                 except Exception as e:
                     print(f"[Server F] Error reading {csv_file}: {e}")
                     continue
@@ -134,79 +134,57 @@ class DataServiceServicer(dataserver_pb2_grpc.DataServiceServicer):
     def InitiateDataRequest(self, request, context):
         print(f"[Server F] Received InitiateDataRequest for: {request.name}")
         
-        # Generate Request ID
-        request_id = str(uuid.uuid4())
+        # Generate Request ID using common utilities
+        request_id = CommonUtils.generate_request_id("F")
         
-        # In a real app, filter self.data_store based on request.name
-        # Here, we just create a session pointing to all data
-        self.sessions[request_id] = {
-            "index": 0,
-            "data": self.data_store  # Storing reference to data
-        }
+        # Create session with all data
+        self.session_manager.create_session(request_id, self.data_store)
         
-        # Prepare first chunk
+        # Get first chunk
+        chunk_data, has_more_chunks = self.session_manager.get_next_chunk(request_id)
+        
+        # Create response
         response = dataserver_pb2.DataChunk()
         response.request_id = request_id
-        
-        # Slice data
-        chunk_data = self.data_store[0:CHUNK_SIZE]
         response.data.extend(chunk_data)
-        
-        # Update Index
-        self.sessions[request_id]["index"] = len(chunk_data)
-        
-        # Has more?
-        response.has_more_chunks = self.sessions[request_id]["index"] < len(self.data_store)
+        response.has_more_chunks = has_more_chunks
         
         return response
 
     def GetNextChunk(self, request, context):
         req_id = request.request_id
         
-        if req_id not in self.sessions:
+        try:
+            chunk_data, has_more_chunks = self.session_manager.get_next_chunk(req_id)
+            
+            # Create response
+            response = dataserver_pb2.DataChunk()
+            response.request_id = req_id
+            response.data.extend(chunk_data)
+            response.has_more_chunks = has_more_chunks
+            
+            print(f"[Server F] Sending Chunk for {req_id}")
+            return response
+        except ValueError as e:
             context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details("Session not found")
+            context.set_details(str(e))
             return dataserver_pb2.DataChunk()
-            
-        session = self.sessions[req_id]
-        start_idx = session["index"]
-        end_idx = start_idx + CHUNK_SIZE
-        
-        # Slice next chunk
-        chunk_data = session["data"][start_idx:end_idx]
-        
-        # Prepare Response
-        response = dataserver_pb2.DataChunk()
-        response.request_id = req_id
-        response.data.extend(chunk_data)
-        
-        # Update state
-        session["index"] = start_idx + len(chunk_data)
-        response.has_more_chunks = session["index"] < len(session["data"])
-        
-        print(f"[Server F] Sending Chunk for {req_id} ({session['index']}/{len(session['data'])})")
-        
-        # Cleanup
-        if not response.has_more_chunks:
-            print(f"[Server F] Finished {req_id}. Cleaning up.")
-            del self.sessions[req_id]
-            
-        return response
 
     def CancelRequest(self, request, context):
         req_id = request.request_id
         print(f"[Server F] Cancelling request {req_id}")
         
-        success = False
-        if req_id in self.sessions:
-            del self.sessions[req_id]
-            success = True
-            
+        success = self.session_manager.cancel_request(req_id)
         return dataserver_pb2.Ack(success=success)
+
+    def shutdown(self):
+        """Shutdown the session manager"""
+        self.session_manager.stop()
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    dataserver_pb2_grpc.add_DataServiceServicer_to_server(DataServiceServicer(), server)
+    servicer = DataServiceServicer()
+    dataserver_pb2_grpc.add_DataServiceServicer_to_server(servicer, server)
     
     # Listen on port 50056 (Computer 3, Worker F)
     server.add_insecure_port(f'[::]:{SERVER_PORT}')
@@ -217,6 +195,8 @@ def serve():
         while True:
             time.sleep(86400)
     except KeyboardInterrupt:
+        print("[Server F] Shutting down...")
+        servicer.shutdown()
         server.stop(0)
 
 if __name__ == '__main__':

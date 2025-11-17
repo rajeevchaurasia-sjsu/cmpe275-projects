@@ -9,6 +9,7 @@
 #include <deque>
 #include "dataserver.grpc.pb.h"
 #include "dataserver.pb.h"
+#include "CommonUtils.hpp"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -22,20 +23,11 @@ using mini2::ChunkRequest;
 using mini2::CancelRequestMessage;
 using mini2::Ack;
 
-// Structure to track chunked request state
-struct ChunkedRequest {
-  std::deque<DataChunk> chunks;
-  int current_chunk_index = 0;
-  std::chrono::steady_clock::time_point last_access;
-
-  ChunkedRequest() : last_access(std::chrono::steady_clock::now()) {}
-};
-
 // Server A - Leader Server
 // Routes client requests to appropriate team leaders (B and D)
 class LeaderServiceImpl final : public DataService::Service {
  public:
-  LeaderServiceImpl() {
+  LeaderServiceImpl() : chunking_manager_(std::make_unique<ChunkingManager>()) {
     // Initialize connections to team leaders
     // B: Green team leader, D: Pink team leader
     team_b_stub_ = DataService::NewStub(
@@ -45,16 +37,6 @@ class LeaderServiceImpl final : public DataService::Service {
     team_d_stub_ = DataService::NewStub(
         grpc::CreateChannel("localhost:50054", grpc::InsecureChannelCredentials()));
     std::cout << "Server A: Connected to Team D (Pink): localhost:50054" << std::endl;
-
-    // Start cleanup thread for expired requests
-    cleanup_thread_ = std::thread(&LeaderServiceImpl::cleanupExpiredRequests, this);
-  }
-
-  ~LeaderServiceImpl() {
-    running_ = false;
-    if (cleanup_thread_.joinable()) {
-      cleanup_thread_.join();
-    }
   }
 
   Status InitiateDataRequest(ServerContext* context, const Request* request,
@@ -62,7 +44,7 @@ class LeaderServiceImpl final : public DataService::Service {
     std::cout << "Server A: Received request for: " << request->name() << std::endl;
 
     // Generate unique request ID
-    std::string request_id = generateRequestId();
+    std::string request_id = CommonUtils::generateRequestId("req_a");
 
     // Query both teams asynchronously
     std::vector<std::thread> team_threads;
@@ -93,18 +75,11 @@ class LeaderServiceImpl final : public DataService::Service {
       combined_data.insert(combined_data.end(), team_data.begin(), team_data.end());
     }
 
-    // Create chunks (e.g., 10 items per chunk)
+    // Create chunks using ChunkingManager
     const int CHUNK_SIZE = 10;
     std::deque<DataChunk> chunks;
     for (size_t i = 0; i < combined_data.size(); i += CHUNK_SIZE) {
-      DataChunk chunk;
-      chunk.set_request_id(request_id);
-      size_t end = std::min(i + CHUNK_SIZE, combined_data.size());
-      for (size_t j = i; j < end; ++j) {
-        auto* data_item = chunk.add_data();
-        data_item->CopyFrom(combined_data[j]);
-      }
-      chunk.set_has_more_chunks((end < combined_data.size()));
+      DataChunk chunk = CommonUtils::createChunk(combined_data, request_id, i, CHUNK_SIZE);
       chunks.push_back(chunk);
     }
 
@@ -116,17 +91,11 @@ class LeaderServiceImpl final : public DataService::Service {
       chunks.push_back(empty_chunk);
     }
 
-    // Store chunked request state
-    {
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      ChunkedRequest req_state;
-      req_state.chunks = chunks;
-      req_state.current_chunk_index = 0;
-      chunked_requests_[request_id] = req_state;
-    }
+    // Store chunked request state using ChunkingManager
+    chunking_manager_->storeChunks(request_id, chunks);
 
     // Return first chunk
-    reply->CopyFrom(chunks.front());
+    *reply = chunks.front();
 
     std::cout << "Server A: Created " << chunks.size() << " chunks with "
               << combined_data.size() << " total data items" << std::endl;
@@ -138,45 +107,20 @@ class LeaderServiceImpl final : public DataService::Service {
                      DataChunk* reply) override {
     std::cout << "Server A: Get next chunk for: " << request->request_id() << std::endl;
 
-    std::lock_guard<std::mutex> lock(requests_mutex_);
-    auto it = chunked_requests_.find(request->request_id());
-    if (it == chunked_requests_.end()) {
-      return Status(grpc::NOT_FOUND, "Request ID not found");
-    }
-
-    ChunkedRequest& req_state = it->second;
-    req_state.last_access = std::chrono::steady_clock::now();
-
-    if (req_state.current_chunk_index + 1 >= static_cast<int>(req_state.chunks.size())) {
-      return Status(grpc::OUT_OF_RANGE, "No more chunks available");
-    }
-
-    req_state.current_chunk_index++;
-    reply->CopyFrom(req_state.chunks[req_state.current_chunk_index]);
-
-    std::cout << "Server A: Returning chunk " << req_state.current_chunk_index
-              << " of " << req_state.chunks.size() << std::endl;
-
-    return Status::OK;
+    return chunking_manager_->getNextChunk(request->request_id(), reply);
   }
 
   Status CancelRequest(ServerContext* context, const CancelRequestMessage* request,
                       Ack* reply) override {
     std::cout << "Server A: Cancel request: " << request->request_id() << std::endl;
 
-    std::lock_guard<std::mutex> lock(requests_mutex_);
-    chunked_requests_.erase(request->request_id());
+    chunking_manager_->cancelRequest(request->request_id());
 
     reply->set_success(true);
     return Status::OK;
   }
 
  private:
-  std::string generateRequestId() {
-    static int counter = 0;
-    return "req_a_" + std::to_string(++counter);
-  }
-
   std::vector<mini2::AirQualityData> queryTeam(const std::string& team, const Request* request) {
     std::vector<mini2::AirQualityData> result;
 
@@ -242,32 +186,11 @@ class LeaderServiceImpl final : public DataService::Service {
     return result;
   }
 
-  void cleanupExpiredRequests() {
-    while (running_) {
-      std::this_thread::sleep_for(std::chrono::minutes(5)); // Cleanup every 5 minutes
-
-      std::lock_guard<std::mutex> lock(requests_mutex_);
-      auto now = std::chrono::steady_clock::now();
-      auto timeout = std::chrono::minutes(30); // 30 minute timeout
-
-      for (auto it = chunked_requests_.begin(); it != chunked_requests_.end(); ) {
-        if (now - it->second.last_access > timeout) {
-          it = chunked_requests_.erase(it);
-        } else {
-          ++it;
-        }
-      }
-    }
-  }
-
+ private:
   std::unique_ptr<DataService::Stub> team_b_stub_;  // Green team leader
   std::unique_ptr<DataService::Stub> team_d_stub_;  // Pink team leader
 
-  std::mutex requests_mutex_;
-  std::unordered_map<std::string, ChunkedRequest> chunked_requests_;
-
-  std::thread cleanup_thread_;
-  std::atomic<bool> running_{true};
+  std::unique_ptr<ChunkingManager> chunking_manager_;
 };
 
 void RunServer() {

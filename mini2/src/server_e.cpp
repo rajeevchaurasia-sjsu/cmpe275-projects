@@ -24,6 +24,8 @@
 #include <grpcpp/grpcpp.h>
 #include "dataserver.grpc.pb.h"
 #include "AirQualityDataManager.hpp"
+#include "CommonUtils.hpp"
+#include "SessionManager.hpp"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -75,22 +77,14 @@ std::string generate_uuid()
 class DataServiceImpl final : public DataService::Service
 {
 private:
-  // Struct to track the state of a client's request
-  struct Session
-  {
-    std::vector<AirQualityData> filtered_data;
-    size_t current_index;
-  };
-
-  // In-memory session store: RequestID -> Session
-  std::map<std::string, Session> sessions_;
-  std::mutex mutex_;
-
   // Reference to the data manager
   AirQualityDataManager data_manager_;
 
+  // Session manager for handling client requests
+  std::unique_ptr<SessionManager> session_manager_;
+
 public:
-  DataServiceImpl()
+  DataServiceImpl() : session_manager_(std::make_unique<SessionManager>())
   {
     // Load data from Sept 1-15 (folders 20200901 to 20200915)
     std::cout << "[Server E] Loading data from Sept 1-15 (20200901 to 20200915)..." << std::endl;
@@ -122,116 +116,44 @@ public:
   // 1. Initiate a Request
   Status InitiateDataRequest(ServerContext *context, const Request *request, DataChunk *response) override
   {
-    std::lock_guard<std::mutex> lock(mutex_);
-
     std::cout << "[Server E] Received InitiateDataRequest for query: " << request->name() << std::endl;
 
     // Create a new session
-    std::string req_id = generate_uuid();
-    Session session;
-    session.current_index = 0;
+    std::string req_id = CommonUtils::generateRequestId("req_e");
 
     // Server E serves ALL data from Sept 1-15
     // In a real app, this would filter based on request->name()
-    const auto &all_data = data_manager_.getAllReadings();
+    const auto &all_readings = data_manager_.getAllReadings();
 
-    // Copy converting generic Reading object to Proto object
-    for (const auto &reading : all_data)
+    // Convert readings to protobuf format
+    std::vector<AirQualityData> filtered_data;
+    for (const auto &reading : all_readings)
     {
-      AirQualityData proto_data;
-      proto_data.set_datetime(reading.getDatetime());
-      proto_data.set_location(reading.getSiteName());
-      proto_data.set_aqi_value(reading.getValue());
-      proto_data.set_aqi_parameter(reading.getPollutantType());
-      session.filtered_data.push_back(proto_data);
+      filtered_data.push_back(CommonUtils::convertToProtobuf(reading));
     }
 
-    std::cout << "[Server E] Prepared " << session.filtered_data.size() << " records for session " << req_id << std::endl;
+    std::cout << "[Server E] Prepared " << filtered_data.size() << " records for session " << req_id << std::endl;
 
-    // Save session
-    sessions_[req_id] = session;
+    // Create session
+    std::string session_id = session_manager_->createSession(filtered_data);
 
-    // Prepare the first chunk
-    response->set_request_id(req_id);
-
-    // Logic to fill the first chunk is same as GetNextChunk, so we just call internal helper or logic here
-    size_t items_to_send = std::min((size_t)CHUNK_SIZE, session.filtered_data.size());
-
-    for (size_t i = 0; i < items_to_send; ++i)
-    {
-      *response->add_data() = session.filtered_data[i];
-    }
-
-    // Update Index
-    sessions_[req_id].current_index = items_to_send;
-
-    // Check if more
-    response->set_has_more_chunks(sessions_[req_id].current_index < session.filtered_data.size());
-
-    return Status::OK;
+    // Get first chunk
+    response->set_request_id(session_id);
+    return session_manager_->getNextChunk(session_id, response);
   }
 
   // 2. Get Next Chunk
   Status GetNextChunk(ServerContext *context, const ChunkRequest *request, DataChunk *response) override
   {
-    std::lock_guard<std::mutex> lock(mutex_);
-    std::string req_id = request->request_id();
-
-    // Check if session exists
-    if (sessions_.find(req_id) == sessions_.end())
-    {
-      return Status(grpc::StatusCode::NOT_FOUND, "Session not found or expired");
-    }
-
-    Session &session = sessions_[req_id];
-
-    // Calculate range
-    size_t start = session.current_index;
-    size_t remaining = session.filtered_data.size() - start;
-    size_t items_to_send = std::min((size_t)CHUNK_SIZE, remaining);
-
-    // Fill Response
-    response->set_request_id(req_id);
-    for (size_t i = 0; i < items_to_send; ++i)
-    {
-      *response->add_data() = session.filtered_data[start + i];
-    }
-
-    // Update state
-    session.current_index += items_to_send;
-    response->set_has_more_chunks(session.current_index < session.filtered_data.size());
-
-    std::cout << "[Server E] Sent chunk for " << req_id << ". Progress: "
-              << session.current_index << "/" << session.filtered_data.size() << std::endl;
-
-    // Cleanup if done
-    if (session.current_index >= session.filtered_data.size())
-    {
-      std::cout << "[Server E] Transfer complete. Removing session " << req_id << std::endl;
-      sessions_.erase(req_id);
-    }
-
-    return Status::OK;
+    return session_manager_->getNextChunk(request->request_id(), response);
   }
 
   // 3. Cancel Request
   Status CancelRequest(ServerContext *context, const CancelRequestMessage *request, Ack *response) override
   {
-    std::lock_guard<std::mutex> lock(mutex_);
-    std::string req_id = request->request_id();
-
-    if (sessions_.find(req_id) != sessions_.end())
-    {
-      sessions_.erase(req_id);
-      response->set_success(true);
-      std::cout << "[Server E] Request " << req_id << " cancelled successfully." << std::endl;
-    }
-    else
-    {
-      response->set_success(false);
-      std::cout << "[Server E] Cancel failed. Session " << req_id << " not found." << std::endl;
-    }
-
+    session_manager_->cancelSession(request->request_id());
+    response->set_success(true);
+    std::cout << "[Server E] Request " << request->request_id() << " cancelled successfully." << std::endl;
     return Status::OK;
   }
 };

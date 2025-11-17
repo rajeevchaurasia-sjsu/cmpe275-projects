@@ -1,14 +1,5 @@
 # Mini 2 - Multi-Process Data Service
 
-## Implementation Status
-- ✅ **Server A (Leader)**: Implemented - routes requests to team leaders B and D
-- ✅ **Server C (Green Worker)**: Implemented - serves sample Green team data
-- ✅ **Server B (Green Team Leader)**: Implemented - streaming pass-through architecture
-- ✅ **Server D (Pink Team Leader)**: Implemented (Python) - streaming pass-through architecture
-- 🔄 **Server E (Pink Worker)**: In progress
-- 🔄 **Server F (Pink Worker)**: In progress
-- ✅ **Client**: Basic implementation available
-
 ## Team Setup
 - **Person 1 (Computer 1)**: Server A (Leader), Server C (Green Worker) ✅
 - **Person 2 (Computer 2)**: Server B (Green Team Leader) ✅, Server D (Pink Team Leader) ✅
@@ -86,16 +77,19 @@ cd build
 ./server_b &   # Port 50052
 
 # Terminal 2 - Python Pink Team Leader
-cd ..  # Back to mini2 root
-source .venv/bin/activate
-python src/server_d.py &  # Port 50054
+cd src/python  # Navigate to Python package
+python3 server_d.py &  # Port 50054
 ```
 
 ### Computer 3 (Person 3)
 ```bash
+# Terminal 1 - C++ Pink Worker
 cd build
-./server_e &                # Port 50055 - Pink Worker (TBD)
-python3 src/server_f.py &   # Port 50056 - Pink Worker (TBD)
+./server_e &                # Port 50055 - Pink Worker (Sept 1-15)
+
+# Terminal 2 - Python Pink Worker
+cd src/python  # Navigate to Python package
+python3 server_f.py &   # Port 50056 - Pink Worker (Sept 16-30)
 ```
 
 ## Testing Person 1 Implementation

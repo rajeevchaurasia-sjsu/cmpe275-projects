@@ -2,27 +2,13 @@ import grpc
 from concurrent import futures
 import sys
 import os
-import threading
-import time
-from datetime import datetime, timedelta
 
 # Add python_generated to path so we can import our proto files
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'python_generated'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'python_generated'))
 
 import dataserver_pb2
 import dataserver_pb2_grpc
-
-
-class RequestMapping:
-    """
-    Stores mapping between our request ID and both workers' request IDs
-    """
-    def __init__(self, worker_e_request_id, worker_f_request_id):
-        self.worker_e_request_id = worker_e_request_id  # E's request ID
-        self.worker_f_request_id = worker_f_request_id  # F's request ID
-        self.last_access = datetime.now()
-        self.e_has_more = True  # Track if E has more chunks
-        self.f_has_more = True  # Track if F has more chunks
+from common_utils import CommonUtils, RequestMappingManager
 
 
 class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
@@ -34,22 +20,9 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
     def __init__(self):
         print("Server D: Initializing Pink Team Leader...")
         
-        # Thread-safe request ID counter
-        self._request_counter = 0
-        self._counter_lock = threading.Lock()
-        
-        # Request mappings: our_request_id -> RequestMapping
-        self._request_mappings = {}
-        self._mappings_lock = threading.Lock()
-        
-        # Cleanup configuration
-        self.REQUEST_EXPIRY_TIME = timedelta(minutes=30)
-        self.CLEANUP_INTERVAL = timedelta(minutes=5)
-        
-        # Start cleanup thread
-        self._running = True
-        self._cleanup_thread = threading.Thread(target=self._cleanup_expired_mappings, daemon=True)
-        self._cleanup_thread.start()
+        # Request mapping manager
+        self._mapping_manager = RequestMappingManager()
+        self._mapping_manager.start()
         
         # Connect to Worker E (C++ - Sept 1-15)
         print("Server D: Connecting to Worker E (C++) at localhost:50055...")
@@ -67,28 +40,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         print("Server D: Worker E handles Sept 1-15, Worker F handles Sept 16-30")
         print("Server D: Pink Team Leader initialized")
     
-    def _generate_request_id(self):
-        """Generate unique request ID in thread-safe manner"""
-        with self._counter_lock:
-            self._request_counter += 1
-            return f"req_d_pink_{self._request_counter}"
-    
-    def _cleanup_expired_mappings(self):
-        """Background thread to remove expired request mappings"""
-        while self._running:
-            time.sleep(self.CLEANUP_INTERVAL.total_seconds())
-            
-            now = datetime.now()
-            with self._mappings_lock:
-                expired_keys = [
-                    req_id for req_id, mapping in self._request_mappings.items()
-                    if now - mapping.last_access > self.REQUEST_EXPIRY_TIME
-                ]
-                
-                for req_id in expired_keys:
-                    print(f"Server D: Cleaning up expired mapping: {req_id}")
-                    del self._request_mappings[req_id]
-    
     def InitiateDataRequest(self, request, context):
         """
         Handle initial data request from Server A
@@ -97,7 +48,7 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         print(f"Server D (Pink Leader): Received request for: {request.name}")
         
         # Generate our request ID
-        our_request_id = self._generate_request_id()
+        our_request_id = CommonUtils.generate_request_id("req_d")
         print(f"Server D: Generated request ID: {our_request_id}")
         
         # Forward request to BOTH workers in parallel
@@ -126,14 +77,13 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
             return dataserver_pb2.DataChunk()
         
         # Store mapping for both workers
-        with self._mappings_lock:
-            self._request_mappings[our_request_id] = RequestMapping(
-                e_response.request_id,  # E's request ID
-                f_response.request_id   # F's request ID
-            )
-            mapping = self._request_mappings[our_request_id]
-            mapping.e_has_more = e_response.has_more_chunks
-            mapping.f_has_more = f_response.has_more_chunks
+        self._mapping_manager.store_mapping(
+            our_request_id,
+            worker_e_request_id=e_response.request_id,
+            worker_f_request_id=f_response.request_id
+        )
+        self._mapping_manager.update_e_has_more(our_request_id, e_response.has_more_chunks)
+        self._mapping_manager.update_f_has_more(our_request_id, f_response.has_more_chunks)
         
         # Merge data from both workers
         print(f"Server D: Merging chunks from E ({len(e_response.data)} items) "
@@ -168,21 +118,18 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         print(f"Server D: Get next chunk for request ID: {our_request_id}")
         
         # Look up both workers' request IDs
-        with self._mappings_lock:
-            if our_request_id not in self._request_mappings:
-                print(f"Server D: ERROR - Request ID not found: {our_request_id}")
-                context.set_code(grpc.StatusCode.NOT_FOUND)
-                context.set_details("Request ID not found or expired")
-                return dataserver_pb2.DataChunk()
-            
-            mapping = self._request_mappings[our_request_id]
-            e_request_id = mapping.worker_e_request_id
-            f_request_id = mapping.worker_f_request_id
-            e_has_more = mapping.e_has_more
-            f_has_more = mapping.f_has_more
-            
-            # Update last access time
-            mapping.last_access = datetime.now()
+        e_request_id = self._mapping_manager.get_worker_e_request_id(our_request_id)
+        f_request_id = self._mapping_manager.get_worker_f_request_id(our_request_id)
+        
+        if not e_request_id or not f_request_id:
+            print(f"Server D: ERROR - Request ID not found: {our_request_id}")
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("Request ID not found or expired")
+            return dataserver_pb2.DataChunk()
+        
+        # Check which workers have more chunks
+        e_has_more = self._mapping_manager.get_e_has_more(our_request_id)
+        f_has_more = self._mapping_manager.get_f_has_more(our_request_id)
         
         print(f"Server D: E has_more: {e_has_more}, F has_more: {f_has_more}")
         
@@ -205,8 +152,7 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
                     merged_response.data.append(item)
                 
                 # Update E's status
-                with self._mappings_lock:
-                    self._request_mappings[our_request_id].e_has_more = e_response.has_more_chunks
+                self._mapping_manager.update_e_has_more(our_request_id, e_response.has_more_chunks)
                 
             except grpc.RpcError as e:
                 print(f"Server D: ERROR - Worker E failed: {e.code()}")
@@ -229,8 +175,7 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
                     merged_response.data.append(item)
                 
                 # Update F's status
-                with self._mappings_lock:
-                    self._request_mappings[our_request_id].f_has_more = f_response.has_more_chunks
+                self._mapping_manager.update_f_has_more(our_request_id, f_response.has_more_chunks)
                 
             except grpc.RpcError as e:
                 print(f"Server D: ERROR - Worker F failed: {e.code()}")
@@ -238,9 +183,7 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
             print(f"Server D: Worker F has no more chunks")
         
         # Check if either worker still has more
-        with self._mappings_lock:
-            mapping = self._request_mappings[our_request_id]
-            merged_response.has_more_chunks = (mapping.e_has_more or mapping.f_has_more)
+        merged_response.has_more_chunks = self._mapping_manager.has_more_chunks(our_request_id)
         
         print(f"Server D: Merged chunk contains {len(merged_response.data)} items, "
               f"has_more: {merged_response.has_more_chunks}")
@@ -255,18 +198,14 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         print(f"Server D: Cancel request ID: {our_request_id}")
         
         # Look up both workers' request IDs
-        e_request_id = None
-        f_request_id = None
+        e_request_id = self._mapping_manager.get_worker_e_request_id(our_request_id)
+        f_request_id = self._mapping_manager.get_worker_f_request_id(our_request_id)
         
-        with self._mappings_lock:
-            if our_request_id in self._request_mappings:
-                mapping = self._request_mappings[our_request_id]
-                e_request_id = mapping.worker_e_request_id
-                f_request_id = mapping.worker_f_request_id
-                del self._request_mappings[our_request_id]
-                print(f"Server D: Removed mapping for: {our_request_id}")
-            else:
-                print(f"Server D: Request ID not found (already expired?): {our_request_id}")
+        if e_request_id or f_request_id:
+            self._mapping_manager.remove_mapping(our_request_id)
+            print(f"Server D: Removed mapping for: {our_request_id}")
+        else:
+            print(f"Server D: Request ID not found (already expired?): {our_request_id}")
         
         # Cancel on Worker E
         if e_request_id:
@@ -298,9 +237,7 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
     def shutdown(self):
         """Cleanup when server stops"""
         print("Server D: Shutting down...")
-        self._running = False
-        if self._cleanup_thread.is_alive():
-            self._cleanup_thread.join(timeout=2)
+        self._mapping_manager.stop()
         
         # Close channels
         self.worker_e_channel.close()
