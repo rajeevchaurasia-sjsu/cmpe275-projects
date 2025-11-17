@@ -18,7 +18,6 @@ except ImportError:
     print("Error: Protobuf modules not found. Please compile dataserver.proto for Python.")
     sys.exit(1)
 
-# Configuration
 SERVER_F_PORT = 50056
 CHUNK_SIZE = 5
 

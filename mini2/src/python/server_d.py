@@ -26,13 +26,11 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         self._mapping_manager = RequestMappingManager()
         self._mapping_manager.start()
         
-        # Connecting to Worker E (C++ - Sept 1-15)
         print(f"Server D: Connecting to Worker E (C++) at {SERVER_E_ADDRESS}...")
         self.worker_e_address = SERVER_E_ADDRESS
         self.worker_e_channel = grpc.insecure_channel(self.worker_e_address)
         self.worker_e_stub = dataserver_pb2_grpc.DataServiceStub(self.worker_e_channel)
         
-        # Connecting to Worker F (Python - Sept 16-30)
         print(f"Server D: Connecting to Worker F (Python) at {SERVER_F_ADDRESS}...")
         self.worker_f_address = SERVER_F_ADDRESS
         self.worker_f_channel = grpc.insecure_channel(self.worker_f_address)
@@ -48,7 +46,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         our_request_id = CommonUtils.generate_request_id("req_d")
         print(f"Server D: Generated request ID: {our_request_id}")
         
-        # Forwarding request to BOTH workers in parallel
         print(f"Server D: Querying Worker E (Sept 1-15)...")
         try:
             e_response = self.worker_e_stub.InitiateDataRequest(request)
@@ -87,15 +84,12 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         merged_response = dataserver_pb2.DataChunk()
         merged_response.request_id = our_request_id
         
-        # Adding Worker E's data first (Sept 1-15)
         for item in e_response.data:
             merged_response.data.append(item)
         
-        # Adding Worker F's data second (Sept 16-30)
         for item in f_response.data:
             merged_response.data.append(item)
         
-        # We have more chunks if EITHER worker has more
         merged_response.has_more_chunks = (e_response.has_more_chunks or 
                                           f_response.has_more_chunks)
         
@@ -112,7 +106,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         our_request_id = request.request_id
         print(f"Server D: Get next chunk for request ID: {our_request_id}")
         
-        # Look up both workers' request IDs
         e_request_id = self._mapping_manager.get_worker_e_request_id(our_request_id)
         f_request_id = self._mapping_manager.get_worker_f_request_id(our_request_id)
         
@@ -122,7 +115,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
             context.set_details("Request ID not found or expired")
             return dataserver_pb2.DataChunk()
         
-        # Check which workers have more chunks
         e_has_more = self._mapping_manager.get_e_has_more(our_request_id)
         f_has_more = self._mapping_manager.get_f_has_more(our_request_id)
         
@@ -131,7 +123,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         merged_response = dataserver_pb2.DataChunk()
         merged_response.request_id = our_request_id
         
-        # Query Worker E if it has more chunks
         if e_has_more:
             print(f"Server D: Getting next chunk from Worker E...")
             try:
@@ -142,11 +133,9 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
                 print(f"Server D: Worker E returned {len(e_response.data)} items, "
                       f"has_more: {e_response.has_more_chunks}")
                 
-                # Add E's data to merged response
                 for item in e_response.data:
                     merged_response.data.append(item)
                 
-                # Update E's status
                 self._mapping_manager.update_e_has_more(our_request_id, e_response.has_more_chunks)
                 
             except grpc.RpcError as e:
@@ -154,7 +143,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         else:
             print(f"Server D: Worker E has no more chunks")
         
-        # Query Worker F if it has more chunks
         if f_has_more:
             print(f"Server D: Getting next chunk from Worker F...")
             try:
@@ -165,11 +153,9 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
                 print(f"Server D: Worker F returned {len(f_response.data)} items, "
                       f"has_more: {f_response.has_more_chunks}")
                 
-                # Add F's data to merged response
                 for item in f_response.data:
                     merged_response.data.append(item)
                 
-                # Update F's status
                 self._mapping_manager.update_f_has_more(our_request_id, f_response.has_more_chunks)
                 
             except grpc.RpcError as e:
@@ -177,7 +163,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         else:
             print(f"Server D: Worker F has no more chunks")
         
-        # Check if either worker still has more
         merged_response.has_more_chunks = self._mapping_manager.has_more_chunks(our_request_id)
         
         print(f"Server D: Merged chunk contains {len(merged_response.data)} items, "
