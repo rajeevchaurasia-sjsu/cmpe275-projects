@@ -7,7 +7,7 @@ SERVER_D_PORT = 50054
 SERVER_E_ADDRESS = '169.254.156.148:50055'
 SERVER_F_ADDRESS = '169.254.156.148:50056'
 
-# Add python_generated to path so we can import our proto files
+# Added the proto generated code to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'python_generated'))
 
 import dataserver_pb2
@@ -23,18 +23,16 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
     
     def __init__(self):
         print("Server D: Initializing Pink Team Leader...")
-        
-        # Request mapping manager
         self._mapping_manager = RequestMappingManager()
         self._mapping_manager.start()
         
-        # Connect to Worker E (C++ - Sept 1-15)
+        # Connecting to Worker E (C++ - Sept 1-15)
         print(f"Server D: Connecting to Worker E (C++) at {SERVER_E_ADDRESS}...")
         self.worker_e_address = SERVER_E_ADDRESS
         self.worker_e_channel = grpc.insecure_channel(self.worker_e_address)
         self.worker_e_stub = dataserver_pb2_grpc.DataServiceStub(self.worker_e_channel)
         
-        # Connect to Worker F (Python - Sept 16-30)
+        # Connecting to Worker F (Python - Sept 16-30)
         print(f"Server D: Connecting to Worker F (Python) at {SERVER_F_ADDRESS}...")
         self.worker_f_address = SERVER_F_ADDRESS
         self.worker_f_channel = grpc.insecure_channel(self.worker_f_address)
@@ -45,17 +43,12 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         print("Server D: Pink Team Leader initialized")
     
     def InitiateDataRequest(self, request, context):
-        """
-        Handle initial data request from Server A
-        Queries BOTH workers E and F, merges their first chunks
-        """
         print(f"Server D (Pink Leader): Received request for: {request.name}")
         
-        # Generate our request ID
         our_request_id = CommonUtils.generate_request_id("req_d")
         print(f"Server D: Generated request ID: {our_request_id}")
         
-        # Forward request to BOTH workers in parallel
+        # Forwarding request to BOTH workers in parallel
         print(f"Server D: Querying Worker E (Sept 1-15)...")
         try:
             e_response = self.worker_e_stub.InitiateDataRequest(request)
@@ -80,7 +73,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
             context.set_details("Worker F unavailable")
             return dataserver_pb2.DataChunk()
         
-        # Store mapping for both workers
         self._mapping_manager.store_mapping(
             our_request_id,
             worker_e_request_id=e_response.request_id,
@@ -89,18 +81,17 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         self._mapping_manager.update_e_has_more(our_request_id, e_response.has_more_chunks)
         self._mapping_manager.update_f_has_more(our_request_id, f_response.has_more_chunks)
         
-        # Merge data from both workers
         print(f"Server D: Merging chunks from E ({len(e_response.data)} items) "
               f"and F ({len(f_response.data)} items)")
         
         merged_response = dataserver_pb2.DataChunk()
         merged_response.request_id = our_request_id
         
-        # Add Worker E's data first (Sept 1-15)
+        # Adding Worker E's data first (Sept 1-15)
         for item in e_response.data:
             merged_response.data.append(item)
         
-        # Add Worker F's data second (Sept 16-30)
+        # Adding Worker F's data second (Sept 16-30)
         for item in f_response.data:
             merged_response.data.append(item)
         
@@ -195,13 +186,9 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         return merged_response
     
     def CancelRequest(self, request, context):
-        """
-        Handle request cancellation - forwards to BOTH workers
-        """
         our_request_id = request.request_id
         print(f"Server D: Cancel request ID: {our_request_id}")
         
-        # Look up both workers' request IDs
         e_request_id = self._mapping_manager.get_worker_e_request_id(our_request_id)
         f_request_id = self._mapping_manager.get_worker_f_request_id(our_request_id)
         
@@ -211,7 +198,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         else:
             print(f"Server D: Request ID not found (already expired?): {our_request_id}")
         
-        # Cancel on Worker E
         if e_request_id:
             print(f"Server D: Canceling Worker E request: {e_request_id}")
             try:
@@ -222,7 +208,6 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
             except grpc.RpcError as e:
                 print(f"Server D: Worker E cancel failed: {e.code()}")
         
-        # Cancel on Worker F
         if f_request_id:
             print(f"Server D: Canceling Worker F request: {f_request_id}")
             try:
@@ -239,11 +224,9 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         return response
     
     def shutdown(self):
-        """Cleanup when server stops"""
         print("Server D: Shutting down...")
         self._mapping_manager.stop()
         
-        # Close channels
         self.worker_e_channel.close()
         self.worker_f_channel.close()
 

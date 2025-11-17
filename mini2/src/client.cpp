@@ -15,7 +15,7 @@ using mini2::DataChunk;
 using mini2::DataService;
 using mini2::Request;
 
-const std::string SERVER_A_ADDRESS = "192.168.156.148:50051";
+const std::string SERVER_A_ADDRESS = "169.254.170.114:50051";
 
 class DataServiceClient
 {
