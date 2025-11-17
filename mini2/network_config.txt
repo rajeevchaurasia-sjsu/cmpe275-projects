@@ -1,0 +1,14 @@
+# Network configuration for Mini2 processes
+# Format: process_name=host:port
+
+# Computer 1 (169.254.170.114): A, C
+server_a=169.254.170.114:50051
+server_c=169.254.170.114:50053
+
+# Computer 2 (169.254.119.126): B, D
+server_b=169.254.119.126:50052
+server_d=169.254.119.126:50054
+
+# Computer 3 (169.254.156.148): E, F
+server_e=169.254.156.148:50055
+server_f=169.254.156.148:50056

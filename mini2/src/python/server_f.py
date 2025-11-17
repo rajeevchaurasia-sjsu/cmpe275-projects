@@ -20,7 +20,7 @@ except ImportError:
     sys.exit(1)
 
 # Configuration
-SERVER_PORT = 50056
+SERVER_F_PORT = 50056
 CHUNK_SIZE = 5
 
 class DataServiceServicer(dataserver_pb2_grpc.DataServiceServicer):
@@ -187,8 +187,8 @@ def serve():
     dataserver_pb2_grpc.add_DataServiceServicer_to_server(servicer, server)
     
     # Listen on port 50056 (Computer 3, Worker F)
-    server.add_insecure_port(f'[::]:{SERVER_PORT}')
-    print(f"Server F (Python) started on port {SERVER_PORT}")
+    server.add_insecure_port(f'[::]:{SERVER_F_PORT}')
+    print(f"Server F (Python) started on port {SERVER_F_PORT}")
     
     server.start()
     try:

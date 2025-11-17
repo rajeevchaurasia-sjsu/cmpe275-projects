@@ -28,6 +28,8 @@ using mini2::CancelRequestMessage;
 using mini2::Ack;
 using mini2::AirQualityData;
 
+const std::string SERVER_C_PORT = "50053";
+
 // Server C - Green Team Worker
 // Processes data requests for the Green team with chunking support
 class WorkerServiceImpl final : public DataService::Service {
@@ -144,7 +146,7 @@ class WorkerServiceImpl final : public DataService::Service {
 };
 
 void RunServer() {
-  std::string server_address("0.0.0.0:50053");
+  std::string server_address("0.0.0.0:" + SERVER_C_PORT);
   WorkerServiceImpl service;
 
   ServerBuilder builder;

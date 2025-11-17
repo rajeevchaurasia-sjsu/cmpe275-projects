@@ -23,6 +23,9 @@ using mini2::DataChunk;
 using mini2::DataService;
 using mini2::Request;
 
+const std::string SERVER_C_ADDRESS = "169.254.170.114:50053";
+const std::string SERVER_B_PORT = "50052";
+
 // Server B - Green Team Leader (Streaming/Pass-Through)
 class GreenTeamLeaderImpl final : public DataService::Service
 {
@@ -32,7 +35,7 @@ public:
     std::cout << "Server B: Initializing Green Team Leader..." << std::endl;
 
     // Connect to Worker C
-    std::string worker_c_address = "169.254.156.148:50053";
+    std::string worker_c_address = SERVER_C_ADDRESS;
     worker_c_stub_ = DataService::NewStub(
         grpc::CreateChannel(worker_c_address, grpc::InsecureChannelCredentials()));
 
@@ -196,7 +199,7 @@ private:
 
 void RunServerB()
 {
-  std::string server_address("0.0.0.0:50052");
+  std::string server_address("0.0.0.0:" + SERVER_B_PORT);
   GreenTeamLeaderImpl service;
 
   ServerBuilder builder;

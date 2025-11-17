@@ -1,12 +1,3 @@
-/*
- * server_e.cpp
- * Pink Team Worker - C++ Implementation
- * * Roles:
- * - Serves a subset of Air Quality Data
- * - Handles Chunked Data Transfer
- * - Manages request sessions
- */
-
 #include <iostream>
 #include <memory>
 #include <string>
@@ -40,8 +31,7 @@ using mini2::DataService;
 using mini2::Request;
 
 // Define the port for Server E (Pink Worker)
-// Assuming A=50051, B=50052, C=50053, D=50054, E=50055
-const std::string SERVER_ADDRESS = "0.0.0.0:50055";
+const std::string SERVER_E_PORT = "50055";
 const int CHUNK_SIZE = 5; // Number of records per chunk (keep small to demo streaming)
 
 // helper to generate UUIDs for session management
@@ -122,7 +112,6 @@ public:
     std::string req_id = CommonUtils::generateRequestId("req_e");
 
     // Server E serves ALL data from Sept 1-15
-    // In a real app, this would filter based on request->name()
     const auto &all_readings = data_manager_.getAllReadings();
 
     // Convert readings to protobuf format
@@ -161,10 +150,11 @@ public:
 void RunServer()
 {
   DataServiceImpl service;
+  std::string server_address("0.0.0.0:" + SERVER_E_PORT);
 
   ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(SERVER_ADDRESS, grpc::InsecureServerCredentials());
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(&service);

@@ -23,6 +23,10 @@ using mini2::DataChunk;
 using mini2::DataService;
 using mini2::Request;
 
+const std::string SERVER_B_ADDRESS = "169.254.119.126:50052";
+const std::string SERVER_D_ADDRESS = "169.254.119.126:50054";
+const std::string SERVER_A_PORT = "50051";
+
 // Server A - Leader Server
 // Routes client requests to appropriate team leaders (B and D)
 class LeaderServiceImpl final : public DataService::Service
@@ -33,12 +37,12 @@ public:
     // Initialize connections to team leaders
     // B: Green team leader, D: Pink team leader
     team_b_stub_ = DataService::NewStub(
-        grpc::CreateChannel("169.254.156.148:50052", grpc::InsecureChannelCredentials()));
+        grpc::CreateChannel(SERVER_B_ADDRESS, grpc::InsecureChannelCredentials()));
 
-    std::cout << "Server A: Connecting to Team B (Green) at 169.254.156.148:50052" << std::endl;
+    std::cout << "Server A: Connecting to Team B (Green) at " << SERVER_B_ADDRESS << std::endl;
     team_d_stub_ = DataService::NewStub(
-        grpc::CreateChannel("169.254.119.126:50054", grpc::InsecureChannelCredentials()));
-    std::cout << "Server A: Connected to Team D (Pink): 169.254.119.126:50054" << std::endl;
+        grpc::CreateChannel(SERVER_D_ADDRESS, grpc::InsecureChannelCredentials()));
+    std::cout << "Server A: Connected to Team D (Pink) at " << SERVER_D_ADDRESS << std::endl;
   }
 
   Status InitiateDataRequest(ServerContext *context, const Request *request,
@@ -227,7 +231,7 @@ private:
 
 void RunServer()
 {
-  std::string server_address("0.0.0.0:50051");
+  std::string server_address("0.0.0.0:" + SERVER_A_PORT);
   LeaderServiceImpl service;
 
   ServerBuilder builder;
@@ -238,8 +242,8 @@ void RunServer()
 
   std::cout << "========================================" << std::endl;
   std::cout << "Server A (Leader) listening on " << server_address << std::endl;
-  std::cout << "Connected to Team B (Green): 192.168.156.148:50052" << std::endl;
-  std::cout << "Connected to Team D (Pink): 169.254.119.126:50054" << std::endl;
+  std::cout << "Connected to Team B (Green): " << SERVER_B_ADDRESS << std::endl;
+  std::cout << "Connected to Team D (Pink): " << SERVER_D_ADDRESS << std::endl;
   std::cout << "Testing with GREEN TEAM ONLY (B, C)" << std::endl;
   std::cout << "Chunking enabled - 10 items per chunk" << std::endl;
   std::cout << "========================================" << std::endl;

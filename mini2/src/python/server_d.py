@@ -3,6 +3,10 @@ from concurrent import futures
 import sys
 import os
 
+SERVER_D_PORT = 50054
+SERVER_E_ADDRESS = '169.254.156.148:50055'
+SERVER_F_ADDRESS = '169.254.156.148:50056'
+
 # Add python_generated to path so we can import our proto files
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'python_generated'))
 
@@ -25,14 +29,14 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         self._mapping_manager.start()
         
         # Connect to Worker E (C++ - Sept 1-15)
-        print("Server D: Connecting to Worker E (C++) at localhost:50055...")
-        self.worker_e_address = '169.254.119.126:50055'
+        print(f"Server D: Connecting to Worker E (C++) at {SERVER_E_ADDRESS}...")
+        self.worker_e_address = SERVER_E_ADDRESS
         self.worker_e_channel = grpc.insecure_channel(self.worker_e_address)
         self.worker_e_stub = dataserver_pb2_grpc.DataServiceStub(self.worker_e_channel)
         
         # Connect to Worker F (Python - Sept 16-30)
-        print("Server D: Connecting to Worker F (Python) at localhost:50056...")
-        self.worker_f_address = '169.254.119.126:50056'
+        print(f"Server D: Connecting to Worker F (Python) at {SERVER_F_ADDRESS}...")
+        self.worker_f_address = SERVER_F_ADDRESS
         self.worker_f_channel = grpc.insecure_channel(self.worker_f_address)
         self.worker_f_stub = dataserver_pb2_grpc.DataServiceStub(self.worker_f_channel)
         
@@ -251,7 +255,7 @@ def serve():
     service = PinkTeamLeaderService()
     dataserver_pb2_grpc.add_DataServiceServicer_to_server(service, server)
     
-    server_address = '0.0.0.0:50054'
+    server_address = f'0.0.0.0:{SERVER_D_PORT}'
     server.add_insecure_port(server_address)
     
     server.start()

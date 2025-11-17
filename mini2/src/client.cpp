@@ -15,6 +15,8 @@ using mini2::DataChunk;
 using mini2::DataService;
 using mini2::Request;
 
+const std::string SERVER_A_ADDRESS = "192.168.156.148:50051";
+
 class DataServiceClient
 {
 public:
@@ -140,7 +142,7 @@ private:
 
 int main(int argc, char **argv)
 {
-  std::string target_str = "169.254.156.148:50051";
+  std::string target_str = SERVER_A_ADDRESS;
   if (argc > 1)
   {
     target_str = argv[1];

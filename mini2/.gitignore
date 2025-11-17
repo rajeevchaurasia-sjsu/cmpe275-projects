@@ -50,6 +50,3 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Network configuration (contains IPs that might change)
-network_config.txt
