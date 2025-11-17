@@ -1,3 +1,4 @@
+// From mini1
 #include "BenchMarkTimer.hpp"
 
 BenchmarkTimer::BenchmarkTimer(const std::string &name, bool autoPrint)

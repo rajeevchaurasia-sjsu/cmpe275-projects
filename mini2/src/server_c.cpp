@@ -35,21 +35,15 @@ const std::string SERVER_C_PORT = "50053";
 class WorkerServiceImpl final : public DataService::Service {
  public:
   WorkerServiceImpl() {
-    // Initialize real air quality data from Mini 1
     initializeRealData();
-
-    // Initialize session manager for chunking (5 items per chunk)
     session_manager_ = std::make_unique<SessionManager>(5);
   }
 
   Status InitiateDataRequest(ServerContext* context, const Request* request,
                            DataChunk* reply) override {
     std::cout << "Server C (Green Worker): Processing request for: " << request->name() << std::endl;
-
-    // Get data for this request (Green team data)
     auto all_data = getGreenTeamData(request->name());
 
-    // Create session and get first chunk
     std::string session_id = session_manager_->createSession(all_data);
     return session_manager_->getNextChunk(session_id, reply);
   }
@@ -70,19 +64,15 @@ class WorkerServiceImpl final : public DataService::Service {
 
  private:
   void initializeRealData() {
-    // Load real air quality data from Mini 2 data directory
-    // Server C serves GREEN TEAM data: August 2020 only (20200801-20200831)
     std::string data_root = "../data/air_quality";
 
     std::cout << "Server C: Loading GREEN TEAM data from August 2020 (20200801-20200831)..." << std::endl;
 
-    // Load specific date folders for Server C (all days of August)
     for (int day = 1; day <= 31; day++) {
       std::stringstream folder_name;
       folder_name << "202008" << std::setfill('0') << std::setw(2) << day;
       std::string folder_path = data_root + "/" + folder_name.str();
 
-      // Check if folder exists and load it
       if (std::filesystem::exists(folder_path)) {
         dataManager_.loadFromDateFolder(folder_path);
       } else {
@@ -93,7 +83,6 @@ class WorkerServiceImpl final : public DataService::Service {
     int totalReadings = dataManager_.getReadingCount();
     std::cout << "Server C: Loaded " << totalReadings << " air quality readings from August 2020" << std::endl;
 
-    // Convert to protobuf format and store
     auto allReadings = dataManager_.getAllReadings();
     for (const auto& reading : allReadings) {
       green_team_data_["real"].push_back(CommonUtils::convertToProtobuf(reading));
@@ -104,7 +93,6 @@ class WorkerServiceImpl final : public DataService::Service {
   }
 
   void initializeSampleData() {
-    // Fallback sample data in case real data loading fails
     for (int i = 1; i <= 25; ++i) {
       mini2::AirQualityData data;
       data.set_datetime("2020-08-10T" + std::to_string(10 + i) + ":00:00Z");
@@ -125,13 +113,11 @@ class WorkerServiceImpl final : public DataService::Service {
   }
 
   std::vector<mini2::AirQualityData> getGreenTeamData(const std::string& query) {
-    // Try to return real data first, fallback to sample data
     auto it = green_team_data_.find("real");
     if (it != green_team_data_.end() && !it->second.empty()) {
       return it->second;
     }
 
-    // Fallback to sample data
     it = green_team_data_.find("sample");
     if (it != green_team_data_.end()) {
       return it->second;
