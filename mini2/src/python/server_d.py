@@ -26,13 +26,13 @@ class PinkTeamLeaderService(dataserver_pb2_grpc.DataServiceServicer):
         
         # Connect to Worker E (C++ - Sept 1-15)
         print("Server D: Connecting to Worker E (C++) at localhost:50055...")
-        self.worker_e_address = '192.168.213.111:50055'
+        self.worker_e_address = '169.254.119.126:50055'
         self.worker_e_channel = grpc.insecure_channel(self.worker_e_address)
         self.worker_e_stub = dataserver_pb2_grpc.DataServiceStub(self.worker_e_channel)
         
         # Connect to Worker F (Python - Sept 16-30)
         print("Server D: Connecting to Worker F (Python) at localhost:50056...")
-        self.worker_f_address = '192.168.213.111:50056'
+        self.worker_f_address = '169.254.119.126:50056'
         self.worker_f_channel = grpc.insecure_channel(self.worker_f_address)
         self.worker_f_stub = dataserver_pb2_grpc.DataServiceStub(self.worker_f_channel)
         

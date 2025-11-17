@@ -35,10 +35,10 @@ public:
     team_b_stub_ = DataService::NewStub(
         grpc::CreateChannel("169.254.156.148:50052", grpc::InsecureChannelCredentials()));
 
-    std::cout << "Server A: Connecting to Team D (Pink) at localhost:50054" << std::endl;
+    std::cout << "Server A: Connecting to Team B (Green) at 169.254.156.148:50052" << std::endl;
     team_d_stub_ = DataService::NewStub(
-        grpc::CreateChannel("192.168.213.111:50054", grpc::InsecureChannelCredentials()));
-    std::cout << "Server A: Connected to Team D (Pink): localhost:50054" << std::endl;
+        grpc::CreateChannel("169.254.119.126:50054", grpc::InsecureChannelCredentials()));
+    std::cout << "Server A: Connected to Team D (Pink): 169.254.119.126:50054" << std::endl;
   }
 
   Status InitiateDataRequest(ServerContext *context, const Request *request,
@@ -238,8 +238,8 @@ void RunServer()
 
   std::cout << "========================================" << std::endl;
   std::cout << "Server A (Leader) listening on " << server_address << std::endl;
-  std::cout << "Connected to Team B (Green): localhost:50052" << std::endl;
-  std::cout << "Connected to Team D (Pink): localhost:50054" << std::endl;
+  std::cout << "Connected to Team B (Green): 192.168.156.148:50052" << std::endl;
+  std::cout << "Connected to Team D (Pink): 169.254.119.126:50054" << std::endl;
   std::cout << "Testing with GREEN TEAM ONLY (B, C)" << std::endl;
   std::cout << "Chunking enabled - 10 items per chunk" << std::endl;
   std::cout << "========================================" << std::endl;
