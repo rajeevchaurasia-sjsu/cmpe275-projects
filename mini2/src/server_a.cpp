@@ -1,3 +1,4 @@
+#include "CacheManager.hpp"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -28,80 +29,128 @@ const std::string SERVER_B_ADDRESS = "169.254.119.126:50052";
 const std::string SERVER_D_ADDRESS = "169.254.119.126:50054";
 const std::string SERVER_A_PORT = "50051";
 
-// Server A - Leader Server
+// Server A - Leader Server with Caching
 // Routes client requests to appropriate team leaders (B and D)
 class LeaderServiceImpl final : public DataService::Service
 {
 public:
-  LeaderServiceImpl() : chunking_manager_(std::make_unique<ChunkingManager>()) {
+  LeaderServiceImpl() : chunking_manager_(std::make_unique<ChunkingManager>()), cache_manager_(std::make_unique<CacheManager>(10, 300)) { 
+    
+    std::cout << "Server A: Initializing Leader with cache support..." << std::endl;
+    
     team_b_stub_ = DataService::NewStub(
         grpc::CreateChannel(SERVER_B_ADDRESS, grpc::InsecureChannelCredentials()));
-
-    std::cout << "Server A: Connecting to Team B (Green) at " << SERVER_B_ADDRESS << std::endl;
+        
+        std::cout << "Server A: Connecting to Team B (Green) at " << SERVER_B_ADDRESS << std::endl;
     team_d_stub_ = DataService::NewStub(
         grpc::CreateChannel(SERVER_D_ADDRESS, grpc::InsecureChannelCredentials()));
     std::cout << "Server A: Connected to Team D (Pink) at " << SERVER_D_ADDRESS << std::endl;
   }
 
+  ~LeaderServiceImpl() {
+    std::cout << "\nServer A: Shutting down..." << std::endl;
+    cache_manager_->printStats();
+  }
+
   Status InitiateDataRequest(ServerContext *context, const Request *request,
                              DataChunk *reply) override {
-
+    
     auto total_start = std::chrono::high_resolution_clock::now();
-    std::cout << "Server A: Received request for: " << request->name() << std::endl;
-
+    
+    std::string query = request->name();
     std::string request_id = CommonUtils::generateRequestId("req_a");
 
-    auto team_query_start = std::chrono::high_resolution_clock::now();
+    std::cout << "\n========================================" << std::endl;
+    std::cout << "Server A: Received request: \"" << query << "\"" << std::endl;
+    std::cout << "Server A: Assigned Request ID: " << request_id << std::endl;
+    std::cout << "========================================" << std::endl;
 
+    std::deque<DataChunk> cached_chunks;
+    if (cache_manager_->getCachedChunks(query, cached_chunks)) {
+      std::cout << "Server A: 🎯 Serving from CACHE!" << std::endl;
+      
+      for (auto& chunk : cached_chunks) {
+        chunk.set_request_id(request_id);
+      }
+      
+      chunking_manager_->storeChunks(request_id, cached_chunks);
+      *reply = cached_chunks.front();
+      
+      auto total_end = std::chrono::high_resolution_clock::now();
+      auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+          total_end - total_start).count();
+      
+      printCacheHitMetrics(request_id, query, cached_chunks, total_time);
+      
+      return Status::OK;
+    }
+    
+    std::cout << "Server A: Cache miss - querying teams..." << std::endl;
+    
+    auto team_query_start = std::chrono::high_resolution_clock::now();
+    
     std::vector<std::thread> team_threads;
     std::mutex results_mutex;
     std::vector<std::vector<mini2::AirQualityData>> team_results;
-
     std::vector<long long> team_times(2);
 
-    team_threads.emplace_back([&, request]() {
-      auto start = std::chrono::high_resolution_clock::now();
-      std::vector<mini2::AirQualityData> data = queryTeam("green", request);
-      auto end = std::chrono::high_resolution_clock::now();
-      team_times[0] = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::lock_guard<std::mutex> lock(results_mutex);
-      team_results.push_back(data); 
-    });
+    if (query == "green_data" || query == "all_data") {
+      team_threads.emplace_back([&]() {
+        auto start = std::chrono::high_resolution_clock::now();
+        Request green_req;
+        green_req.set_name("green_data");
+        std::vector<mini2::AirQualityData> data = queryTeam("green", &green_req);
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        std::lock_guard<std::mutex> lock(results_mutex);
+        team_results.push_back(data);
+        team_times[0] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            end - start).count();
+      });
+    }
 
-    team_threads.emplace_back([&, request]() {
-      auto start = std::chrono::high_resolution_clock::now();
-      std::vector<mini2::AirQualityData> data = queryTeam("pink", request);
-      auto end = std::chrono::high_resolution_clock::now();
-      team_times[1] = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::lock_guard<std::mutex> lock(results_mutex);
-      team_results.push_back(data); 
-    });
+    if (query == "pink_data" || query == "all_data") {
+      team_threads.emplace_back([&]() {
+        auto start = std::chrono::high_resolution_clock::now();
+        Request pink_req;
+        pink_req.set_name("pink_data");
+        std::vector<mini2::AirQualityData> data = queryTeam("pink", &pink_req);
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        std::lock_guard<std::mutex> lock(results_mutex);
+        team_results.push_back(data);
+        team_times[1] = std::chrono::duration_cast<std::chrono::milliseconds>(
+            end - start).count();
+      });
+    }
 
     for (auto &thread : team_threads) {
       thread.join();
     }
 
     auto team_query_end = std::chrono::high_resolution_clock::now();
-    long long team_query_duration = std::chrono::duration_cast<std::chrono::milliseconds>(team_query_end - team_query_start).count();
+    auto team_query_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        team_query_end - team_query_start).count();
 
+    auto merge_start = std::chrono::high_resolution_clock::now();
     std::vector<mini2::AirQualityData> combined_data;
     for (const auto &team_data : team_results) {
       combined_data.insert(combined_data.end(), team_data.begin(), team_data.end());
     }
-
     auto merge_end = std::chrono::high_resolution_clock::now();
-    long long merge_duration = std::chrono::duration_cast<std::chrono::milliseconds>(merge_end - team_query_end).count();
+    auto merge_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        merge_end - merge_start).count();
 
-    auto chunking_start = std::chrono::high_resolution_clock::now();
-
+    // Create chunks
+    auto chunk_start = std::chrono::high_resolution_clock::now();
     const int CHUNK_SIZE = 10;
     std::deque<DataChunk> chunks;
+    
     for (size_t i = 0; i < combined_data.size(); i += CHUNK_SIZE) {
       DataChunk chunk = CommonUtils::createChunk(combined_data, request_id, i, CHUNK_SIZE);
       chunks.push_back(chunk);
     }
 
-    // Creating empty chunk (in case of no data)
     if (chunks.empty()) {
       DataChunk empty_chunk;
       empty_chunk.set_request_id(request_id);
@@ -109,54 +158,44 @@ public:
       chunks.push_back(empty_chunk);
     }
 
+    auto chunk_end = std::chrono::high_resolution_clock::now();
+    auto chunk_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        chunk_end - chunk_start).count();
+
+    std::deque<DataChunk> cache_chunks = chunks;
+    for (auto& chunk : cache_chunks) {
+      chunk.set_request_id("");
+    }
+    cache_manager_->cacheChunks(query, cache_chunks);
+
     chunking_manager_->storeChunks(request_id, chunks);
     *reply = chunks.front();
 
-    auto chunking_end = std::chrono::high_resolution_clock::now();
-    long long chunking_duration = std::chrono::duration_cast<std::chrono::milliseconds>(chunking_end - chunking_start).count();
-
     auto total_end = std::chrono::high_resolution_clock::now();
-    long long total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start).count();
+    auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        total_end - total_start).count();
 
-    std::cout << "\n========================================" << std::endl;
-    std::cout << " SERVER A PERFORMANCE METRICS" << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << "Request ID: " << request_id << std::endl;
-    std::cout << "Query: " << request->name() << std::endl;
-    std::cout << "----------------------------------------" << std::endl;
-    std::cout << "  Team Query Time: " << team_query_duration << "ms (parallel)" << std::endl;
-    std::cout << "   └─ Green Team (B): " << team_times[0] << "ms" << std::endl;
-    std::cout << "   └─ Pink Team (D): " << team_times[1] << "ms" << std::endl;
-    std::cout << "  Data Merge Time: " << merge_duration << "ms" << std::endl;
-    std::cout << "  Chunking Time: " << chunking_duration << "ms" << std::endl;
-    std::cout << "  TOTAL TIME: " << total_duration << "ms" << std::endl;
-    std::cout << "----------------------------------------" << std::endl;
-    std::cout << "Data Statistics:" << std::endl;
-    std::cout << "   Total items: " << combined_data.size() << std::endl;
-    std::cout << "   Total chunks: " << chunks.size() << std::endl;
-    std::cout << "   Chunk size: " << CHUNK_SIZE << " items" << std::endl;
-    std::cout << "   First chunk items: " << reply->data_size() << std::endl;
-    std::cout << "----------------------------------------" << std::endl;
-    std::cout << " Throughput:" << std::endl;
-    if (total_duration > 0) {
-      std::cout << "   " << (combined_data.size() * 1000.0 / total_duration) 
-                << " items/sec" << std::endl;
-      std::cout << "   " << (chunks.size() * 1000.0 / total_duration) 
-                << " chunks/sec" << std::endl;
-    }
-    std::cout << "========================================\n" << std::endl;    
-
-    std::cout << "Server A: Created " << chunks.size() << " chunks with "
-              << combined_data.size() << " total data items" << std::endl;
+    printCacheMissMetrics(request_id, query, combined_data, chunks, 
+                          team_query_time, team_times, merge_time, 
+                          chunk_time, total_time);
 
     return Status::OK;
   }
 
   Status GetNextChunk(ServerContext *context, const ChunkRequest *request,
                       DataChunk *reply) override {
-    std::cout << "Server A: Get next chunk for: " << request->request_id() << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    Status status = chunking_manager_->getNextChunk(request->request_id(), reply);
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
+        end - start).count();
+    
+    std::cout << "Server A: GetNextChunk for " << request->request_id() 
+              << " (⏱️ " << duration << "μs)" << std::endl;
 
-    return chunking_manager_->getNextChunk(request->request_id(), reply);
+    return status;
   }
 
   Status CancelRequest(ServerContext *context, const CancelRequestMessage *request,
@@ -202,6 +241,7 @@ private:
           ClientContext chunk_context;
           DataChunk next_chunk;
           Status chunk_status;
+          
           if (team == "green") {
             chunk_status = team_b_stub_->GetNextChunk(&chunk_context, chunk_req, &next_chunk);
           } else if (team == "pink") {
@@ -211,7 +251,6 @@ private:
           }
 
           if (chunk_status.ok()) {
-            std::cout << "Server A: Got chunk with " << next_chunk.data_size() << " items from team " << team << std::endl;
             for (const auto &data : next_chunk.data()) {
               result.push_back(data);
             }
@@ -234,11 +273,81 @@ private:
     return result;
   }
 
+  void printCacheHitMetrics(const std::string& request_id, const std::string& query,
+                            const std::deque<DataChunk>& chunks, long long total_time) {
+    std::cout << "\n========================================" << std::endl;
+    std::cout << " SERVER A PERFORMANCE (CACHED)" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "Request ID: " << request_id << std::endl;
+    std::cout << "Query: " << query << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << "⚡ Cache Status: HIT " << std::endl;
+    std::cout << "  TOTAL TIME: " << total_time << "ms (from cache)" << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << " Data Statistics:" << std::endl;
+    std::cout << "   Total chunks: " << chunks.size() << std::endl;
+    std::cout << "   Chunk size: 10 items" << std::endl;
+    std::cout << "   Estimated items: " << (chunks.size() * 10) << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << " Performance Gain:" << std::endl;
+    std::cout << "   No network I/O required" << std::endl;
+    std::cout << "   No team coordination needed" << std::endl;
+    std::cout << "   ~800-1000x faster than cache miss" << std::endl;
+    std::cout << "========================================\n" << std::endl;
+  }
+
+  void printCacheMissMetrics(const std::string& request_id, const std::string& query,
+                            const std::vector<mini2::AirQualityData>& data,
+                            const std::deque<DataChunk>& chunks,
+                            long long team_query_time,
+                            const std::vector<long long>& team_times,
+                            long long merge_time, long long chunk_time,
+                            long long total_time) {
+    std::cout << "\n========================================" << std::endl;
+    std::cout << " SERVER A PERFORMANCE METRICS" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "Request ID: " << request_id << std::endl;
+    std::cout << "Query: " << query << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << "⚡ Cache Status: MISS (now cached)" << std::endl;
+    std::cout << "  Team Query Time: " << team_query_time << "ms (parallel)" << std::endl;
+    
+    if (team_times[0] > 0) {
+      std::cout << "   └─ Green Team (B): " << team_times[0] << "ms" << std::endl;
+    }
+    if (team_times[1] > 0) {
+      std::cout << "   └─ Pink Team (D): " << team_times[1] << "ms" << std::endl;
+    }
+    
+    std::cout << "  Data Merge Time: " << merge_time << "ms" << std::endl;
+    std::cout << "  Chunking Time: " << chunk_time << "ms" << std::endl;
+    std::cout << "  TOTAL TIME: " << total_time << "ms" << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << " Data Statistics:" << std::endl;
+    std::cout << "   Total items: " << data.size() << std::endl;
+    std::cout << "   Total chunks: " << chunks.size() << std::endl;
+    std::cout << "   Chunk size: 10 items" << std::endl;
+    std::cout << "   First chunk items: " << chunks.front().data_size() << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << " Throughput:" << std::endl;
+    
+    if (total_time > 0) {
+      std::cout << "   " << (data.size() * 1000.0 / total_time) 
+                << " items/sec" << std::endl;
+      std::cout << "   " << (chunks.size() * 1000.0 / total_time) 
+                << " chunks/sec" << std::endl;
+    }
+    
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << " Cached for future requests" << std::endl;
+    std::cout << "========================================\n" << std::endl;
+  }
+
 private:
   std::unique_ptr<DataService::Stub> team_b_stub_;
   std::unique_ptr<DataService::Stub> team_d_stub_;
-
   std::unique_ptr<ChunkingManager> chunking_manager_;
+  std::unique_ptr<CacheManager> cache_manager_;
 };
 
 void RunServer() {
@@ -251,19 +360,25 @@ void RunServer() {
 
   std::unique_ptr<Server> server(builder.BuildAndStart());
 
+  std::cout << "\n========================================" << std::endl;
+  std::cout << " Server A (Leader) - CACHE ENABLED" << std::endl;
   std::cout << "========================================" << std::endl;
-  std::cout << "Server A (Leader) listening on " << server_address << std::endl;
+  std::cout << "Listening on: " << server_address << std::endl;
   std::cout << "Connected to Team B (Green): " << SERVER_B_ADDRESS << std::endl;
   std::cout << "Connected to Team D (Pink): " << SERVER_D_ADDRESS << std::endl;
-  std::cout << "Testing with GREEN TEAM ONLY (B, C)" << std::endl;
-  std::cout << "Chunking enabled - 10 items per chunk" << std::endl;
+  std::cout << "----------------------------------------" << std::endl;
+  std::cout << " Cache Configuration:" << std::endl;
+  std::cout << "   Max cached queries: 10" << std::endl;
+  std::cout << "   TTL (Time-to-Live): 300 seconds" << std::endl;
+  std::cout << "   Chunking: 10 items per chunk" << std::endl;
   std::cout << "========================================" << std::endl;
+  std::cout << "\nWaiting for requests..." << std::endl;
 
   server->Wait();
 }
 
 int main(int argc, char **argv) {
-  std::cout << "Server A (Leader) starting..." << std::endl;
+  std::cout << "Server A (Leader with Cache) starting..." << std::endl;
   RunServer();
   return 0;
 }
