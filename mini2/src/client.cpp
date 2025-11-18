@@ -4,6 +4,7 @@
 #include <grpcpp/grpcpp.h>
 #include "dataserver.grpc.pb.h"
 #include "dataserver.pb.h"
+#include <chrono>
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -23,8 +24,10 @@ public:
   DataServiceClient(std::shared_ptr<Channel> channel)
       : stub_(DataService::NewStub(channel)) {}
 
-  void InitiateRequest(const std::string &query)
-  {
+  void InitiateRequest(const std::string &query) {
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     Request request;
     request.set_name(query);
 
@@ -36,6 +39,7 @@ public:
     std::cout << "========================================\n"
               << std::endl;
 
+    auto first_chunk_start = std::chrono::high_resolution_clock::now();  
     Status status = stub_->InitiateDataRequest(&context, request, &reply);
 
     if (status.ok())
@@ -53,11 +57,18 @@ public:
       int chunk_count = 1;
       std::string request_id = reply.request_id();
 
+      auto chunk_times = std::vector<long long>();
+
       while (reply.has_more_chunks())
       {
+
         chunk_count++;
+        auto chunk_start = std::chrono::high_resolution_clock::now();
         if (getNextChunk(request_id, reply))
         {
+          auto chunk_end = std::chrono::high_resolution_clock::now();
+          long long chunk_duration = std::chrono::duration_cast<std::chrono::milliseconds>(chunk_end - chunk_start).count();
+          chunk_times.push_back(chunk_duration);
           total_items += reply.data_size();
           displayChunkData(reply, chunk_count);
         }
@@ -66,6 +77,16 @@ public:
           std::cerr << "❌ Failed to get chunk " << chunk_count << std::endl;
           break;
         }
+      }
+
+      auto end_time = std::chrono::high_resolution_clock::now();
+      long long total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+      
+      long long avg_chunk_time = 0;
+      if (!chunk_times.empty()) {
+        long long sum = 0;
+        for (auto t : chunk_times) sum += t;
+        avg_chunk_time = sum / chunk_times.size();
       }
 
       std::cout << "\n========================================" << std::endl;

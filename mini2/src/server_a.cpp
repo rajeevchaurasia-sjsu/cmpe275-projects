@@ -10,6 +10,7 @@
 #include "dataserver.grpc.pb.h"
 #include "dataserver.pb.h"
 #include "CommonUtils.hpp"
+#include <chrono>
 
 using grpc::ClientContext;
 using grpc::Server;
@@ -44,22 +45,34 @@ public:
 
   Status InitiateDataRequest(ServerContext *context, const Request *request,
                              DataChunk *reply) override {
+
+    auto total_start = std::chrono::high_resolution_clock::now();
     std::cout << "Server A: Received request for: " << request->name() << std::endl;
 
     std::string request_id = CommonUtils::generateRequestId("req_a");
+
+    auto team_query_start = std::chrono::high_resolution_clock::now();
 
     std::vector<std::thread> team_threads;
     std::mutex results_mutex;
     std::vector<std::vector<mini2::AirQualityData>> team_results;
 
+    std::vector<long long> team_times(2);
+
     team_threads.emplace_back([&, request]() {
+      auto start = std::chrono::high_resolution_clock::now();
       std::vector<mini2::AirQualityData> data = queryTeam("green", request);
+      auto end = std::chrono::high_resolution_clock::now();
+      team_times[0] = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       std::lock_guard<std::mutex> lock(results_mutex);
       team_results.push_back(data); 
     });
 
     team_threads.emplace_back([&, request]() {
+      auto start = std::chrono::high_resolution_clock::now();
       std::vector<mini2::AirQualityData> data = queryTeam("pink", request);
+      auto end = std::chrono::high_resolution_clock::now();
+      team_times[1] = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       std::lock_guard<std::mutex> lock(results_mutex);
       team_results.push_back(data); 
     });
@@ -68,10 +81,18 @@ public:
       thread.join();
     }
 
+    auto team_query_end = std::chrono::high_resolution_clock::now();
+    long long team_query_duration = std::chrono::duration_cast<std::chrono::milliseconds>(team_query_end - team_query_start).count();
+
     std::vector<mini2::AirQualityData> combined_data;
     for (const auto &team_data : team_results) {
       combined_data.insert(combined_data.end(), team_data.begin(), team_data.end());
     }
+
+    auto merge_end = std::chrono::high_resolution_clock::now();
+    long long merge_duration = std::chrono::duration_cast<std::chrono::milliseconds>(merge_end - team_query_end).count();
+
+    auto chunking_start = std::chrono::high_resolution_clock::now();
 
     const int CHUNK_SIZE = 10;
     std::deque<DataChunk> chunks;
@@ -90,6 +111,40 @@ public:
 
     chunking_manager_->storeChunks(request_id, chunks);
     *reply = chunks.front();
+
+    auto chunking_end = std::chrono::high_resolution_clock::now();
+    long long chunking_duration = std::chrono::duration_cast<std::chrono::milliseconds>(chunking_end - chunking_start).count();
+
+    auto total_end = std::chrono::high_resolution_clock::now();
+    long long total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_end - total_start).count();
+
+    std::cout << "\n========================================" << std::endl;
+    std::cout << " SERVER A PERFORMANCE METRICS" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "Request ID: " << request_id << std::endl;
+    std::cout << "Query: " << request->name() << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << "  Team Query Time: " << team_query_duration << "ms (parallel)" << std::endl;
+    std::cout << "   └─ Green Team (B): " << team_times[0] << "ms" << std::endl;
+    std::cout << "   └─ Pink Team (D): " << team_times[1] << "ms" << std::endl;
+    std::cout << "  Data Merge Time: " << merge_duration << "ms" << std::endl;
+    std::cout << "  Chunking Time: " << chunking_duration << "ms" << std::endl;
+    std::cout << "  TOTAL TIME: " << total_duration << "ms" << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << "Data Statistics:" << std::endl;
+    std::cout << "   Total items: " << combined_data.size() << std::endl;
+    std::cout << "   Total chunks: " << chunks.size() << std::endl;
+    std::cout << "   Chunk size: " << CHUNK_SIZE << " items" << std::endl;
+    std::cout << "   First chunk items: " << reply->data_size() << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << " Throughput:" << std::endl;
+    if (total_duration > 0) {
+      std::cout << "   " << (combined_data.size() * 1000.0 / total_duration) 
+                << " items/sec" << std::endl;
+      std::cout << "   " << (chunks.size() * 1000.0 / total_duration) 
+                << " chunks/sec" << std::endl;
+    }
+    std::cout << "========================================\n" << std::endl;    
 
     std::cout << "Server A: Created " << chunks.size() << " chunks with "
               << combined_data.size() << " total data items" << std::endl;
